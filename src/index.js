@@ -1,5 +1,6 @@
 const express = require("express");
 const bodyParser = require('body-parser');
+const cors = require('cors');
 
 const app = express();
 const PORT = 3000;
@@ -7,11 +8,12 @@ const PORT = 3000;
 const db = require("./db/db");
 
 
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(cors());
 /*-----------------------------------ROUTING---------------------------------------------*/ 
 
 app.get("/", (req, res) => {
-  db.getAllAdmins(res);
+  //db.getAllAdmins(res);
 });
 
 app.post("/login", (req,res) => {
@@ -23,15 +25,10 @@ app.post("/login", (req,res) => {
 })
 
 
-
-
-
-
-
-
-
-
-
+app.get("/showPlayas", (req, res) => {
+  db.getPlayas(res);
+  console.log("SOY UND DEBUG");
+});
 /*--------------------------------------------------------------------------------*/ 
 app.listen(PORT, () => {
   console.log(`Aplicación corriendo en el puerto ${PORT}`);
