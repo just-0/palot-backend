@@ -40,7 +40,7 @@ function getAllAdmins(res) {
     console.log("Datos obtenidos de la tabla Admin");
     res.send(resultados);
   });
-}
+} 
 
 /*
   Codigos de Error:
@@ -83,14 +83,49 @@ function getPlayas(res) {
       console.error("Error al obtener datos de la tabla Admin: " + err.stack);
       return;
     }
-    // Aqui quiero el sleep
     res.send(resultados);
     
   });
 }
 
+function getPlacas(req,res){
+  const query = `SELECT * FROM Auto where id_playa = '${req.query.idPlaya}'`;
+  connection.query(query, (err, resultados) => {
+    if (err) {
+      console.error("Error al obtener datos de la tabla Admin: " + err.stack);
+      return;
+    }
+    //console.log("xd", resultados);
+    res.send(resultados);
+    
+  }); 
+}
+function updateStateAuto(req,res){
+  const id_auto = req.params.id_auto;
+  let  state  = req.body.state
+  
+  
+  // Validar que 'state' sea un número y esté definido
+   // Validar que 'state' sea un número y esté definido
+   if (state === undefined) {
+    state = req.query.state;
+  }
+
+  const query = 'UPDATE Auto SET state = ? WHERE id_auto = ?';
+  connection.query(query, [state, id_auto], (err, results) => {
+    if (err) {
+      console.error('Error en la consulta:', err);
+      return res.status(500).send('Error en la consulta');
+    }
+    if (results.affectedRows === 0) {
+      return res.status(404).send('Registro no encontrado');
+    }
+
+    res.send(results);
+  }); 
+}
 
 //-----------------------------------------------------------------------------------------
 
-module.exports = { connection, queryTest, getAllAdmins, checkLogin, getPlayas};
+module.exports = { connection, queryTest, getAllAdmins, checkLogin, getPlayas, getPlacas,updateStateAuto};
 //connection.end()

@@ -27,7 +27,17 @@ app.post("/login", (req,res) => {
 
 app.get("/showPlayas", (req, res) => {
   db.getPlayas(res);
-  console.log("SOY UND DEBUG");
+  
+});
+
+app.get("/getPlacas", (req, res) => {
+  db.getPlacas(req,res);
+  
+});
+
+app.put("/updateStateAuto/:id_auto",  (req, res) => {
+
+   db.updateStateAuto(req,res);
 });
 /*--------------------------------------------------------------------------------*/ 
 app.listen(PORT, () => {
