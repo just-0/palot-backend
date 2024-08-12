@@ -2,7 +2,7 @@ const express = require("express");
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
-
+const request = require('request');
 const app = express();
 const PORT = 3000;
 
@@ -12,6 +12,7 @@ const db = require("./db/db");
 app.use(bodyParser.json());
 app.use(cors());
 app.use('/api', bodyParser.text({ type: 'application/xml' }));
+app.use('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', bodyParser.text({ type: 'text/plain' }));
 
 /*-----------------------------------ROUTING---------------------------------------------*/ 
 
@@ -77,25 +78,35 @@ app.get("/getBoletas",  (req, res) => {
   db.getBoletas(req,res)
   
 });
-app.use('/api', createProxyMiddleware({
-  target: 'http://192.168.1.64',
-  changeOrigin: true,
-  pathRewrite: {
-    '^/api': '', // Remueve el prefijo /api de la URL
-  },
-  onProxyReq: (proxyReq, req, res) => {
-    // Cambia el método POST a GET
-    if (req.method === 'POST') {
-      proxyReq.method = 'GET';
-      proxyReq.setHeader('Content-Type', 'application/xml');
-      proxyReq.setHeader('Authorization', 'Basic ' + Buffer.from('admin:Hik12345').toString('base64'));
-      if (req.body) {
-        proxyReq.write(req.body);
-        proxyReq.end();
-      }
+
+app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', (req, res) => {
+  console.log("Received request to /api/ISAPI/Traffic/channels/1/vehicleDetect/plates/");
+  
+  const options = {
+    method: 'GET',
+    url: 'http://192.168.1.120/ISAPI/Traffic/channels/1/vehicleDetect/plates',
+    headers: {
+      'Content-Type': 'text/plain', 
+      'Authorization': 'Basic ' + Buffer.from('admin:Hik12345').toString('base64')
+    },
+    body: '<?xml version="1.0" encoding="UTF-8"?>\r\n<Root></Root>\r\n' 
+  };
+
+  
+  request(options, (error, response, body) => {
+    if (error) {
+      console.error("Error during request:", error.message); 
+      return res.status(500).send(error.message); 
     }
-  }
-}));
+    
+    
+    console.log("Response body from target server:", body);
+    
+    
+    res.set(response.headers);
+    res.status(response.statusCode).send(body);
+  });
+});
 /*--------------------------------------------------------------------------------*/ 
 app.listen(PORT, () => {
   console.log(`Aplicación corriendo en el puerto ${PORT}`);
