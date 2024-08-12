@@ -1,6 +1,7 @@
 const express = require("express");
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const app = express();
 const PORT = 3000;
@@ -10,6 +11,8 @@ const db = require("./db/db");
 
 app.use(bodyParser.json());
 app.use(cors());
+app.use('/api', bodyParser.text({ type: 'application/xml' }));
+
 /*-----------------------------------ROUTING---------------------------------------------*/ 
 
 app.get("/", (req, res) => {
@@ -74,6 +77,25 @@ app.get("/getBoletas",  (req, res) => {
   db.getBoletas(req,res)
   
 });
+app.use('/api', createProxyMiddleware({
+  target: 'http://192.168.1.64',
+  changeOrigin: true,
+  pathRewrite: {
+    '^/api': '', // Remueve el prefijo /api de la URL
+  },
+  onProxyReq: (proxyReq, req, res) => {
+    // Cambia el método POST a GET
+    if (req.method === 'POST') {
+      proxyReq.method = 'GET';
+      proxyReq.setHeader('Content-Type', 'application/xml');
+      proxyReq.setHeader('Authorization', 'Basic ' + Buffer.from('admin:Hik12345').toString('base64'));
+      if (req.body) {
+        proxyReq.write(req.body);
+        proxyReq.end();
+      }
+    }
+  }
+}));
 /*--------------------------------------------------------------------------------*/ 
 app.listen(PORT, () => {
   console.log(`Aplicación corriendo en el puerto ${PORT}`);
