@@ -138,15 +138,16 @@ function getPlacas(req, res) {
       console.error("Error al obtener datos de la tabla Auto: " + err.stack);
       return res.status(500).send("Error al obtener datos");
     }
+    //console.log("aaadebug-",idPlaya, todayStart, todayEnd)
     res.send(resultados);
+    
   });
 }
 function updateStateAuto(req, res) {
   const id_auto = req.params.id_auto;
   let state = req.body.state;
 
-  // Validar que 'state' sea un número y esté definido
-  // Validar que 'state' sea un número y esté definido
+  
   if (state === undefined) {
     state = req.query.state;
   }
@@ -168,8 +169,7 @@ function updateStateMoto(req, res) {
   const id_moto = req.params.id_moto;
   let state = req.body.state;
 
-  // Validar que 'state' sea un número y esté definido
-  // Validar que 'state' sea un número y esté definido
+
   if (state === undefined) {
     state = req.query.state;
   }
@@ -190,14 +190,14 @@ function updateStateMoto(req, res) {
 function carroPagoTicketVenta(req, res) {
   const data = req.body;
 
-  // Consulta para insertar la boleta
+  
   const query = "INSERT INTO Boleta (id_auto, total_pagar, fecha_emision) VALUES (?, ?, ?)";
 
   const fechaSalida = moment(data.horaSalida)
     .tz("America/Lima")
     .format("YYYY-MM-DD HH:mm:ss");
 
-  // Ejecutar la consulta para insertar la boleta
+  
   connection.query(query, [data.id, data.Monto, fechaSalida], (err, results) => {
     if (err) {
       console.error("Error en la consulta PAGAR:", err);
@@ -205,13 +205,13 @@ function carroPagoTicketVenta(req, res) {
       return;
     }
 
-    // Obtener el ID de la boleta creada
+    
     const boletaId = results.insertId;
 
-    // Consulta para actualizar el auto
+    
     const query2 = "UPDATE Auto SET hora_salida = ?, state = ? WHERE id_auto = ?";
 
-    // Ejecutar la consulta para actualizar el auto
+    
     connection.query(query2, [fechaSalida, data.state, data.id], (err, results) => {
       if (err) {
         console.error("Error en la consulta ACTUALIZAR AUTO:", err);
@@ -219,7 +219,7 @@ function carroPagoTicketVenta(req, res) {
         return;
       }
 
-      // Enviar la respuesta incluyendo el ID de la boleta creada
+      
       res.send({ boletaId });
     });
   });
@@ -227,14 +227,14 @@ function carroPagoTicketVenta(req, res) {
 function motoPagoTicketVenta(req, res) {
   const data = req.body;
 
-  // Consulta para insertar la boleta
+
   const query = "INSERT INTO Boleta (id_moto, total_pagar, fecha_emision) VALUES (?, ?, ?)";
 
   const fechaSalida = moment(data.horaSalida)
     .tz("America/Lima")
     .format("YYYY-MM-DD HH:mm:ss");
 
-  // Ejecutar la consulta para insertar la boleta
+  
   connection.query(query, [data.id, data.Monto, fechaSalida], (err, results) => {
     if (err) {
       console.error("Error en la consulta INSERTAR BOLETA:", err);
@@ -242,13 +242,13 @@ function motoPagoTicketVenta(req, res) {
       return;
     }
 
-    // Obtener el ID de la boleta creada
+    
     const boletaId = results.insertId;
 
-    // Consulta para actualizar la moto
+    
     const query2 = "UPDATE Moto SET hora_salida = ?, state = ? WHERE id_moto = ?";
 
-    // Ejecutar la consulta para actualizar la moto
+    
     connection.query(query2, [fechaSalida, data.state, data.id], (err) => {
       if (err) {
         console.error("Error en la consulta ACTUALIZAR MOTO:", err);
@@ -256,7 +256,7 @@ function motoPagoTicketVenta(req, res) {
         return;
       }
 
-      // Enviar la respuesta incluyendo el ID de la boleta creada
+      
       res.send({ boletaId });
     });
   });
@@ -281,7 +281,7 @@ function createManualCar(req, res) {
         return res.status(500).send("Error en la consulta");
       }
 
-      // Recuperar el carro recién creado
+      
       const id_auto = results.insertId;
       const selectQuery = "SELECT * FROM Auto WHERE id_auto = ?";
 
@@ -291,7 +291,7 @@ function createManualCar(req, res) {
           return res.status(500).send("Error al recuperar el carro");
         }
 
-        // Enviar el carro creado como respuesta
+        
         return res.status(201).json(rows[0]);
       });
     }
@@ -300,7 +300,7 @@ function createManualCar(req, res) {
 
 function createManualBike(req, res) {
   const data = req.body;
-  console.log("HERERERERE ->", data.placa);
+  //console.log("HERERERERE ->", data.placa);
   const fechaEntrada = moment(data.horaEntrada)
     .tz("America/Lima")
     .format("YYYY-MM-DD HH:mm:ss");
@@ -317,7 +317,7 @@ function createManualBike(req, res) {
         return res.status(500).send("Error en la consulta");
       }
 
-      // Recuperar el carro recién creado
+      
       const id_moto = results.insertId;
       const selectQuery = "SELECT * FROM Moto WHERE id_moto = ?";
 
@@ -327,7 +327,7 @@ function createManualBike(req, res) {
           return res.status(500).send("Error al recuperar el carro");
         }
 
-        // Enviar el carro creado como respuesta
+       
         return res.status(201).json(rows[0]);
       });
     }
@@ -335,7 +335,7 @@ function createManualBike(req, res) {
 }
 
 function getBoletas(req, res) {
-  const idPlaya = req.query.id_playa; // Obtén el id_playa de los parámetros de consulta
+  const idPlaya = req.query.id_playa; 
   
   if (!idPlaya) {
     return res.status(400).send("El id_playa es requerido");
@@ -390,7 +390,70 @@ function getBoletas(req, res) {
     
     res.send(resultados);
   });
+
+
 }
+
+function filterNewPlates(plates,db) {
+  return new Promise((resolve, reject) => {
+    const plateNumbers = plates.map(plate => plate.plateNumber);
+    const query = `SELECT placa, hora_entrada FROM Auto WHERE placa IN (?)`;
+    
+    connection.query(query, [plateNumbers], (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        const existingPlates = new Set(results.map(row => `${row.placa}-${row.hora_entrada}`));
+        const newPlates = plates.filter(plate => !existingPlates.has(`${plate.plateNumber}-${ convertToDate(plate.captureTime)}`));
+        resolve(newPlates);
+      }
+    });
+  });
+}
+  
+function insertNewPlates(plates, id_playa) {
+  return new Promise((resolve, reject) => {
+    const plateData = plates.map(plate => ({
+      placa: plate.plateNumber,
+      hora_entrada: convertToDate(plate.captureTime),
+      img: plate.picName,
+      id_playa: id_playa
+    }));
+    
+    const values = plateData.map(data => [data.id_playa, data.placa, data.hora_entrada, data.img]);
+
+    
+    if (values.length === 0) {
+      return console.log("NO HAY PLACAS NUEVAS");
+    }
+
+    const query = `INSERT INTO Auto (id_playa, placa, hora_entrada, img) VALUES ?`;
+
+    connection.query(query, [values], (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
+function convertToDate(captureTime) {
+  
+  const year = captureTime.substring(0, 4);
+  const month = captureTime.substring(4, 6);
+  const day = captureTime.substring(6, 8);
+  const hour = captureTime.substring(9, 11);
+  const minute = captureTime.substring(11, 13);
+  const second = captureTime.substring(13, 15);
+
+  
+  const formattedDate = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+
+  
+  return new Date(formattedDate);
+}
+
 //-----------------------------------------------------------------------------------------
 
 module.exports = {
@@ -409,5 +472,7 @@ module.exports = {
   updateStateMoto,
   motoPagoTicketVenta,
   getBoletas,
+  filterNewPlates,
+    insertNewPlates,
 };
 //connection.end()

@@ -3,10 +3,14 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const request = require('request');
+
+
+
 const app = express();
 const PORT = 3000;
 
 const db = require("./db/db");
+const utils = require("./db/utils");
 
 
 app.use(bodyParser.json());
@@ -80,31 +84,38 @@ app.get("/getBoletas",  (req, res) => {
 });
 
 app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', (req, res) => {
+  const idPlaya = req.query.id_playa;
   console.log("Received request to /api/ISAPI/Traffic/channels/1/vehicleDetect/plates/");
   
   const options = {
     method: 'GET',
     url: 'http://192.168.1.120/ISAPI/Traffic/channels/1/vehicleDetect/plates',
     headers: {
-      'Content-Type': 'text/plain', 
+      'Content-Type': 'text/plain',
       'Authorization': 'Basic ' + Buffer.from('admin:Hik12345').toString('base64')
     },
-    body: '<?xml version="1.0" encoding="UTF-8"?>\r\n<Root></Root>\r\n' 
+    body: '<?xml version="1.0" encoding="UTF-8"?>\r\n<Root></Root>\r\n'
   };
 
-  
-  request(options, (error, response, body) => {
+  request(options, async (error, response, body) => {
     if (error) {
-      console.error("Error during request:", error.message); 
-      return res.status(500).send(error.message); 
+      console.error("Error during request:", error.message);
+      return res.status(500).send(error.message);
     }
     
     
-    console.log("Response body from target server:", body);
     
     
-    res.set(response.headers);
-    res.status(response.statusCode).send(body);
+    const parsedPlates = await utils.parseXML(body);
+    
+    
+    const newPlates = await db.filterNewPlates(parsedPlates);
+    console.log("insertando.xd.");
+    
+    await db.insertNewPlates(newPlates,idPlaya);
+
+    
+    res.status(200).json(newPlates);
   });
 });
 /*--------------------------------------------------------------------------------*/ 
