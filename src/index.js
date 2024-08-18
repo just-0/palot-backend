@@ -85,11 +85,11 @@ app.get("/getBoletas",  (req, res) => {
 
 app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', (req, res) => {
   const idPlaya = req.query.id_playa;
-  console.log("Received request to /api/ISAPI/Traffic/channels/1/vehicleDetect/plates/");
+  console.log("PLACAS CAMARA")
   
   const options = {
     method: 'GET',
-    url: 'http://192.168.1.120/ISAPI/Traffic/channels/1/vehicleDetect/plates',
+    url: 'http://192.168.1.64/ISAPI/Traffic/channels/1/vehicleDetect/plates',
     headers: {
       'Content-Type': 'text/plain',
       'Authorization': 'Basic ' + Buffer.from('admin:Hik12345').toString('base64')
@@ -110,7 +110,7 @@ app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', (req, res) => {
     
     
     const newPlates = await db.filterNewPlates(parsedPlates);
-    console.log("insertando.xd.");
+    
     
     await db.insertNewPlates(newPlates,idPlaya);
 

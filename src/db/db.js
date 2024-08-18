@@ -361,6 +361,7 @@ function getBoletas(req, res) {
         Boleta b ON m.id_moto = b.id_moto
     WHERE 
         m.id_playa = ?
+        AND m.state = 2
         AND m.hora_entrada BETWEEN ? AND ?
     UNION ALL
     SELECT 
@@ -379,8 +380,10 @@ function getBoletas(req, res) {
         Boleta b ON a.id_auto = b.id_auto
     WHERE 
         a.id_playa = ?
+        AND a.state = 2
         AND a.hora_entrada BETWEEN ? AND ?;
   `;
+
 
   connection.query(query, [idPlaya, todayStart, todayEnd, idPlaya, todayStart, todayEnd], (err, resultados) => {
     if (err) {
@@ -424,7 +427,7 @@ function insertNewPlates(plates, id_playa) {
 
     
     if (values.length === 0) {
-      return console.log("NO HAY PLACAS NUEVAS");
+      return;// console.log("NO HAY PLACAS NUEVAS");
     }
 
     const query = `INSERT INTO Auto (id_playa, placa, hora_entrada, img) VALUES ?`;
