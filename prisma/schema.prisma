@@ -1,0 +1,90 @@
+// Este archivo define el modelo de datos basado en tu diagrama y está listo para usar con MySQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  nombre String @id
+  hashed String
+  Playa  Playa[] @relation("AdminPlaya")
+}
+
+model Playa {
+  id_playa     Int      @id @default(autoincrement())
+  nombre_admin String
+  nombre       String
+  direccion    String?
+  hashed       String?
+  tarifaAuto   Float?
+  tarifaMoto   Float?
+  Auto         Auto[]
+  Moto         Moto[]
+  Trabaja      Trabaja[]
+  Admin        Admin   @relation(fields: [nombre_admin], references: [nombre], name: "AdminPlaya")
+}
+
+model Auto {
+  id_auto      Int      @id @default(autoincrement())
+  id_playa     Int
+  placa        String
+  hora_entrada DateTime
+  hora_salida  DateTime?
+  image        String?
+  state        Int?
+  Cliente      Cliente?
+  Boleta       Boleta[]
+  Playa        Playa    @relation(fields: [id_playa], references: [id_playa])
+}
+
+model Moto {
+  id_moto      Int      @id @default(autoincrement())
+  id_playa     Int
+  placa        String
+  hora_entrada DateTime
+  hora_salida  DateTime?
+  image        String?
+  state        Int?
+  Playa        Playa    @relation(fields: [id_playa], references: [id_playa])
+}
+
+model Cliente {
+  id_cliente Int    @id @default(autoincrement())
+  id_auto    Int    @unique
+  nombre     String
+  dni_ruc    String
+  Auto       Auto   @relation(fields: [id_auto], references: [id_auto])
+  Boleta     Boleta[]
+}
+
+model Boleta {
+  id_boleta    Int      @id @default(autoincrement())
+  id_auto      Int
+  id_cliente   Int
+  total_pagar  Float
+  fecha_emision DateTime
+  Auto         Auto     @relation(fields: [id_auto], references: [id_auto])
+  Cliente      Cliente  @relation(fields: [id_cliente], references: [id_cliente])
+}
+
+model Empleado {
+  id_empleado Int    @id @default(autoincrement())
+  nombre      String
+  numDias     Int?
+  hashed      String
+  Trabaja     Trabaja[]
+}
+
+model Trabaja {
+  id_empleado Int
+  id_playa    Int
+  Empleado    Empleado @relation(fields: [id_empleado], references: [id_empleado])
+  Playa       Playa    @relation(fields: [id_playa], references: [id_playa])
+
+  @@id([id_empleado, id_playa])
+} 

@@ -1,11 +1,12 @@
-const mysql = require("mysql");
+const mysql = require('mysql2');
 const moment = require("moment-timezone");
+require('dotenv').config();
 
 const connection = mysql.createConnection({
-  host: "localhost",
-  user: "root",
-  password: "yuca123",
-  database: "palot",
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
 });
 connection.connect((err) => {
   if (err) {
@@ -22,12 +23,12 @@ function queryTest(nombre, contraseña, res) {
   connection.query(query, (err, resultados) => {
     if (err) {
       console.error("Error al insertar en la tabla Admin: " + err.stack);
-      res.status(500).send("Error al insertar en la tabla Admin");
+      res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error al insertar en la tabla Admin");
       return;
     }
 
     console.log("Nuevo registro insertado en la tabla Admin");
-    res.send("Nuevo registro insertado en la tabla Admin");
+    res.status(parseInt(process.env.HTTP_CREATED) || 201).send("Nuevo registro insertado en la tabla Admin");
   });
 }
 
@@ -36,11 +37,11 @@ function getAllAdmins(res) {
   connection.query(query, (err, resultados) => {
     if (err) {
       console.error("Error al obtener datos de la tabla Admin: " + err.stack);
-      return;
+      return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error al obtener datos");
     }
 
     console.log("Datos obtenidos de la tabla Admin");
-    res.send(resultados);
+    res.status(parseInt(process.env.HTTP_OK) || 200).send(resultados);
   });
 }
 
@@ -57,21 +58,28 @@ function checkLogin(username, password, res) {
     (error, results, fields) => {
       if (error) {
         console.error(error);
-        res.status(500).res.json({ success: false, codigo: 3 });
+        res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).json({ 
+          success: false, 
+          codigo: parseInt(process.env.LOGIN_ERROR_DB_ERROR) || 3 
+        });
         return;
       }
       if (results.length > 0) {
         const user = results[0];
 
         if (password == user.hashed) {
-          res.json({ success: true });
+          res.status(parseInt(process.env.HTTP_OK) || 200).json({ success: true });
         } else {
-          res.status(401);
-          res.json({ success: false, codigo: 1 });
+          res.status(parseInt(process.env.HTTP_UNAUTHORIZED) || 401).json({ 
+            success: false, 
+            codigo: parseInt(process.env.LOGIN_ERROR_WRONG_PASSWORD) || 1 
+          });
         }
       } else {
-        res.status(401);
-        res.json({ success: false, codigo: 2 });
+        res.status(parseInt(process.env.HTTP_UNAUTHORIZED) || 401).json({ 
+          success: false, 
+          codigo: parseInt(process.env.LOGIN_ERROR_USER_NOT_FOUND) || 2 
+        });
       }
     }
   );
@@ -101,13 +109,13 @@ function getAutoByID(req, res) {
 
 function getPlacasMotos(req, res) {
   const idPlaya = req.query.idPlaya;
-  const todayStart = moment().startOf('day').format('YYYY-MM-DD HH:mm:ss');
-  const todayEnd = moment().endOf('day').format('YYYY-MM-DD HH:mm:ss');
+  const todayStart = moment().tz(process.env.TIMEZONE || 'America/Lima').startOf('day').format(process.env.DATE_FORMAT || 'YYYY-MM-DD HH:mm:ss');
+  const todayEnd = moment().tz(process.env.TIMEZONE || 'America/Lima').endOf('day').format(process.env.DATE_FORMAT || 'YYYY-MM-DD HH:mm:ss');
   
+  // Consulta sin JOIN con Boleta ya que las motos no tienen boletas según el esquema
   const query = `
-    SELECT Moto.*, Boleta.total_pagar
+    SELECT Moto.*, NULL as total_pagar
     FROM Moto
-    LEFT JOIN Boleta ON Moto.id_moto = Boleta.id_moto
     WHERE Moto.id_playa = ? 
       AND Moto.hora_entrada BETWEEN ? AND ?
   `;
@@ -115,15 +123,15 @@ function getPlacasMotos(req, res) {
   connection.query(query, [idPlaya, todayStart, todayEnd], (err, resultados) => {
     if (err) {
       console.error("Error al obtener datos de la tabla Moto: " + err.stack);
-      return res.status(500).send("Error al obtener datos");
+      return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error al obtener datos");
     }
-    res.send(resultados);
+    res.status(parseInt(process.env.HTTP_OK) || 200).send(resultados);
   });
 }
 function getPlacas(req, res) {
   const idPlaya = req.query.idPlaya;
-  const todayStart = moment().startOf('day').format('YYYY-MM-DD HH:mm:ss');
-  const todayEnd = moment().endOf('day').format('YYYY-MM-DD HH:mm:ss');
+  const todayStart = moment().tz(process.env.TIMEZONE || 'America/Lima').startOf('day').format(process.env.DATE_FORMAT || 'YYYY-MM-DD HH:mm:ss');
+  const todayEnd = moment().tz(process.env.TIMEZONE || 'America/Lima').endOf('day').format(process.env.DATE_FORMAT || 'YYYY-MM-DD HH:mm:ss');
   
   const query = `
     SELECT Auto.*, Boleta.total_pagar
@@ -136,18 +144,15 @@ function getPlacas(req, res) {
   connection.query(query, [idPlaya, todayStart, todayEnd], (err, resultados) => {
     if (err) {
       console.error("Error al obtener datos de la tabla Auto: " + err.stack);
-      return res.status(500).send("Error al obtener datos");
+      return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error al obtener datos");
     }
-    //console.log("aaadebug-",idPlaya, todayStart, todayEnd)
-    res.send(resultados);
-    
+    res.status(parseInt(process.env.HTTP_OK) || 200).send(resultados);
   });
 }
 function updateStateAuto(req, res) {
   const id_auto = req.params.id_auto;
   let state = req.body.state;
 
-  
   if (state === undefined) {
     state = req.query.state;
   }
@@ -156,19 +161,18 @@ function updateStateAuto(req, res) {
   connection.query(query, [state, id_auto], (err, results) => {
     if (err) {
       console.error("Error en la consulta:", err);
-      return res.status(500).send("Error en la consulta");
+      return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error en la consulta");
     }
     if (results.affectedRows === 0) {
-      return res.status(404).send("Registro no encontrado");
+      return res.status(parseInt(process.env.HTTP_NOT_FOUND) || 404).send("Registro no encontrado");
     }
 
-    res.send(results);
+    res.status(parseInt(process.env.HTTP_OK) || 200).send(results);
   });
 }
 function updateStateMoto(req, res) {
   const id_moto = req.params.id_moto;
   let state = req.body.state;
-
 
   if (state === undefined) {
     state = req.query.state;
@@ -178,87 +182,68 @@ function updateStateMoto(req, res) {
   connection.query(query, [state, id_moto], (err, results) => {
     if (err) {
       console.error("Error en la consulta:", err);
-      return res.status(500).send("Error en la consulta");
+      return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error en la consulta");
     }
     if (results.affectedRows === 0) {
-      return res.status(404).send("Registro no encontrado");
+      return res.status(parseInt(process.env.HTTP_NOT_FOUND) || 404).send("Registro no encontrado");
     }
 
-    res.send(results);
+    res.status(parseInt(process.env.HTTP_OK) || 200).send(results);
   });
 }
 function carroPagoTicketVenta(req, res) {
   const data = req.body;
 
-  
   const query = "INSERT INTO Boleta (id_auto, total_pagar, fecha_emision) VALUES (?, ?, ?)";
 
   const fechaSalida = moment(data.horaSalida)
-    .tz("America/Lima")
-    .format("YYYY-MM-DD HH:mm:ss");
+    .tz(process.env.TIMEZONE || "America/Lima")
+    .format(process.env.DATE_FORMAT || "YYYY-MM-DD HH:mm:ss");
 
-  
   connection.query(query, [data.id, data.Monto, fechaSalida], (err, results) => {
     if (err) {
       console.error("Error en la consulta PAGAR:", err);
-      res.status(500).send({ error: 'Error en la consulta PAGAR' });
+      res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send({ error: 'Error en la consulta PAGAR' });
       return;
     }
 
-    
     const boletaId = results.insertId;
-
-    
     const query2 = "UPDATE Auto SET hora_salida = ?, state = ? WHERE id_auto = ?";
 
-    
     connection.query(query2, [fechaSalida, data.state, data.id], (err, results) => {
       if (err) {
         console.error("Error en la consulta ACTUALIZAR AUTO:", err);
-        res.status(500).send({ error: 'Error en la consulta ACTUALIZAR AUTO' });
+        res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send({ error: 'Error en la consulta ACTUALIZAR AUTO' });
         return;
       }
 
-      
-      res.send({ boletaId });
+      res.status(parseInt(process.env.HTTP_OK) || 200).send({ boletaId });
     });
   });
 }
 function motoPagoTicketVenta(req, res) {
   const data = req.body;
 
-
-  const query = "INSERT INTO Boleta (id_moto, total_pagar, fecha_emision) VALUES (?, ?, ?)";
-
   const fechaSalida = moment(data.horaSalida)
-    .tz("America/Lima")
-    .format("YYYY-MM-DD HH:mm:ss");
+    .tz(process.env.TIMEZONE || "America/Lima")
+    .format(process.env.DATE_FORMAT || "YYYY-MM-DD HH:mm:ss");
 
-  
-  connection.query(query, [data.id, data.Monto, fechaSalida], (err, results) => {
+  // Solo actualizar el estado de la moto ya que no puede generar boletas según el esquema actual
+  const query = "UPDATE Moto SET hora_salida = ?, state = ? WHERE id_moto = ?";
+
+  connection.query(query, [fechaSalida, data.state, data.id], (err, results) => {
     if (err) {
-      console.error("Error en la consulta INSERTAR BOLETA:", err);
-      res.status(500).send({ error: 'Error en la consulta INSERTAR BOLETA' });
+      console.error("Error en la consulta ACTUALIZAR MOTO:", err);
+      res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send({ error: 'Error en la consulta ACTUALIZAR MOTO' });
       return;
     }
 
-    
-    const boletaId = results.insertId;
+    if (results.affectedRows === 0) {
+      return res.status(parseInt(process.env.HTTP_NOT_FOUND) || 404).send({ error: 'Moto no encontrada' });
+    }
 
-    
-    const query2 = "UPDATE Moto SET hora_salida = ?, state = ? WHERE id_moto = ?";
-
-    
-    connection.query(query2, [fechaSalida, data.state, data.id], (err) => {
-      if (err) {
-        console.error("Error en la consulta ACTUALIZAR MOTO:", err);
-        res.status(500).send({ error: 'Error en la consulta ACTUALIZAR MOTO' });
-        return;
-      }
-
-      
-      res.send({ boletaId });
-    });
+    // Retornar sin boletaId ya que las motos no generan boletas
+    res.status(parseInt(process.env.HTTP_OK) || 200).send({ message: 'Moto actualizada correctamente', id_moto: data.id });
   });
 }
 
@@ -266,8 +251,8 @@ function createManualCar(req, res) {
   const data = req.body;
 
   const fechaEntrada = moment(data.horaEntrada)
-    .tz("America/Lima")
-    .format("YYYY-MM-DD HH:mm:ss");
+    .tz(process.env.TIMEZONE || "America/Lima")
+    .format(process.env.DATE_FORMAT || "YYYY-MM-DD HH:mm:ss");
 
   const query =
     "INSERT INTO Auto (id_playa, placa, hora_entrada, state) VALUES (?, ?, ?, ?)";
@@ -278,21 +263,19 @@ function createManualCar(req, res) {
     (err, results) => {
       if (err) {
         console.error("Error en la consulta:", err);
-        return res.status(500).send("Error en la consulta");
+        return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error en la consulta");
       }
 
-      
       const id_auto = results.insertId;
       const selectQuery = "SELECT * FROM Auto WHERE id_auto = ?";
 
       connection.query(selectQuery, [id_auto], (err, rows) => {
         if (err) {
           console.error("Error al recuperar el carro:", err);
-          return res.status(500).send("Error al recuperar el carro");
+          return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error al recuperar el carro");
         }
 
-        
-        return res.status(201).json(rows[0]);
+        return res.status(parseInt(process.env.HTTP_CREATED) || 201).json(rows[0]);
       });
     }
   );
@@ -300,10 +283,10 @@ function createManualCar(req, res) {
 
 function createManualBike(req, res) {
   const data = req.body;
-  //console.log("HERERERERE ->", data.placa);
+  
   const fechaEntrada = moment(data.horaEntrada)
-    .tz("America/Lima")
-    .format("YYYY-MM-DD HH:mm:ss");
+    .tz(process.env.TIMEZONE || "America/Lima")
+    .format(process.env.DATE_FORMAT || "YYYY-MM-DD HH:mm:ss");
 
   const query =
     "INSERT INTO Moto (id_playa, placa, hora_entrada, state) VALUES (?, ?, ?, ?)";
@@ -314,21 +297,19 @@ function createManualBike(req, res) {
     (err, results) => {
       if (err) {
         console.error("Error en la consulta:", err);
-        return res.status(500).send("Error en la consulta");
+        return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error en la consulta");
       }
 
-      
       const id_moto = results.insertId;
       const selectQuery = "SELECT * FROM Moto WHERE id_moto = ?";
 
       connection.query(selectQuery, [id_moto], (err, rows) => {
         if (err) {
-          console.error("Error al recuperar el carro:", err);
-          return res.status(500).send("Error al recuperar el carro");
+          console.error("Error al recuperar la moto:", err);
+          return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error al recuperar la moto");
         }
 
-       
-        return res.status(201).json(rows[0]);
+        return res.status(parseInt(process.env.HTTP_CREATED) || 201).json(rows[0]);
       });
     }
   );
@@ -338,11 +319,11 @@ function getBoletas(req, res) {
   const idPlaya = req.query.id_playa; 
   
   if (!idPlaya) {
-    return res.status(400).send("El id_playa es requerido");
+    return res.status(parseInt(process.env.HTTP_BAD_REQUEST) || 400).send("El id_playa es requerido");
   }
 
-  const todayStart = moment().startOf('day').format('YYYY-MM-DD HH:mm:ss');
-  const todayEnd = moment().endOf('day').format('YYYY-MM-DD HH:mm:ss');
+  const todayStart = moment().tz(process.env.TIMEZONE || 'America/Lima').startOf('day').format(process.env.DATE_FORMAT || 'YYYY-MM-DD HH:mm:ss');
+  const todayEnd = moment().tz(process.env.TIMEZONE || 'America/Lima').endOf('day').format(process.env.DATE_FORMAT || 'YYYY-MM-DD HH:mm:ss');
 
   const query = `
     SELECT 
@@ -352,13 +333,11 @@ function getBoletas(req, res) {
         m.hora_salida AS hora_salida,
         m.state AS state,
         m.img AS img,
-        b.total_pagar AS monto,
-        b.fecha_emision AS fecha_emision,
+        NULL AS monto,
+        NULL AS fecha_emision,
         'Moto' AS tipo
     FROM 
         Moto m
-    LEFT JOIN 
-        Boleta b ON m.id_moto = b.id_moto
     WHERE 
         m.id_playa = ?
         AND m.state = 2
@@ -388,10 +367,10 @@ function getBoletas(req, res) {
   connection.query(query, [idPlaya, todayStart, todayEnd, idPlaya, todayStart, todayEnd], (err, resultados) => {
     if (err) {
       console.error("Error al obtener datos combinados: " + err.stack);
-      return res.status(500).send("Error al obtener datos");
+      return res.status(parseInt(process.env.HTTP_INTERNAL_ERROR) || 500).send("Error al obtener datos");
     }
     
-    res.send(resultados);
+    res.status(parseInt(process.env.HTTP_OK) || 200).send(resultados);
   });
 
 

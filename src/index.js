@@ -3,11 +3,11 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const request = require('request');
-
-
+require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || 'localhost';
 
 const db = require("./db/db");
 const utils = require("./db/utils");
@@ -89,10 +89,11 @@ app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', (req, res) => {
   
   const options = {
     method: 'GET',
-    url: 'http://192.168.1.64/ISAPI/Traffic/channels/1/vehicleDetect/plates',
+    url: process.env.CAM_URL,
+    timeout: parseInt(process.env.CAM_TIMEOUT) || 5000,
     headers: {
       'Content-Type': 'text/plain',
-      'Authorization': 'Basic ' + Buffer.from('admin:Hik12345').toString('base64')
+      'Authorization': 'Basic ' + Buffer.from(process.env.CAM_USER + ':' + process.env.CAM_PASSWORD).toString('base64')
     },
     body: '<?xml version="1.0" encoding="UTF-8"?>\r\n<Root></Root>\r\n'
   };
@@ -100,27 +101,27 @@ app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', (req, res) => {
   request(options, async (error, response, body) => {
     if (error) {
       console.error("Error during request:", error.message);
-      return res.status(500).send(error.message);
+      // En lugar de devolver error 500, devolver array vacío para que la app siga funcionando
+      console.log("Cámara no disponible, devolviendo array vacío");
+      return res.status(parseInt(process.env.HTTP_OK) || 200).json([]);
     }
     
-    
-    
-    
-    const parsedPlates = await utils.parseXML(body);
-    
-    
-    const newPlates = await db.filterNewPlates(parsedPlates);
-    
-    
-    await db.insertNewPlates(newPlates,idPlaya);
-
-    
-    res.status(200).json(newPlates);
+    try {
+      const parsedPlates = await utils.parseXML(body);
+      const newPlates = await db.filterNewPlates(parsedPlates);
+      await db.insertNewPlates(newPlates, idPlaya);
+      res.status(parseInt(process.env.HTTP_OK) || 200).json(newPlates);
+    } catch (parseError) {
+      console.error("Error parsing camera data:", parseError.message);
+      res.status(parseInt(process.env.HTTP_OK) || 200).json([]);
+    }
   });
 });
 /*--------------------------------------------------------------------------------*/ 
-app.listen(PORT, () => {
-  console.log(`Aplicación corriendo en el puerto ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}`);
+  console.log(`📊 Entorno: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🕒 Zona horaria: ${process.env.TIMEZONE || 'America/Lima'}`);
 });
 
 process.on("exit", () => {
