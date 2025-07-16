@@ -1,0 +1,137 @@
+# ===============================================
+# PALOT BACKEND API TESTS
+# ===============================================
+# IMPORTANTE: Este archivo NO contiene credenciales reales
+# Reemplaza los valores de ejemplo antes de usar
+
+### Variables
+@baseUrl = http://localhost:3000
+@apiUrl = {{baseUrl}}/api
+
+### Health Check
+GET {{apiUrl}}/health
+
+### Root endpoint
+GET {{baseUrl}}/
+
+### ===============================================
+### AUTH ENDPOINTS
+### ===============================================
+
+### Login (Reemplaza con credenciales reales)
+POST {{apiUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "YOUR_USERNAME_HERE",
+  "password": "YOUR_PASSWORD_HERE"
+}
+
+### ===============================================
+### PLAYA ENDPOINTS
+### ===============================================
+
+### Get all playas
+GET {{apiUrl}}/playas
+
+### ===============================================
+### VEHICLE ENDPOINTS
+### ===============================================
+
+### Get autos (Reemplaza idPlaya con valor real)
+GET {{apiUrl}}/vehicles/autos?idPlaya=1
+
+### Get motos (Reemplaza idPlaya con valor real)
+GET {{apiUrl}}/vehicles/motos?idPlaya=1
+
+### Update auto state (Reemplaza ID con valor real)
+PUT {{apiUrl}}/vehicles/autos/1/state
+Content-Type: application/json
+
+{
+  "state": 2
+}
+
+### Update moto state (Reemplaza ID con valor real)
+PUT {{apiUrl}}/vehicles/motos/1/state
+Content-Type: application/json
+
+{
+  "state": 2
+}
+
+### Create manual auto
+PUT {{apiUrl}}/vehicles/autos/manual
+Content-Type: application/json
+
+{
+  "placa": "ABC123",
+  "id_playa": 1,
+  "horaEntrada": "2024-01-15T10:30:00",
+  "state": 1
+}
+
+### Create manual moto
+PUT {{apiUrl}}/vehicles/motos/manual
+Content-Type: application/json
+
+{
+  "placa": "XYZ789",
+  "id_playa": 1,
+  "horaEntrada": "2024-01-15T10:30:00",
+  "state": 1
+}
+
+### Process auto payment
+PUT {{apiUrl}}/vehicles/autos/payment
+Content-Type: application/json
+
+{
+  "id": 1,
+  "state": 3,
+  "horaSalida": "2024-01-15T12:30:00",
+  "Monto": 5.00
+}
+
+### Process moto payment
+PUT {{apiUrl}}/vehicles/motos/payment
+Content-Type: application/json
+
+{
+  "id": 1,
+  "state": 3,
+  "horaSalida": "2024-01-15T12:30:00",
+  "Monto": 3.00
+}
+
+### Get boletas (Reemplaza id_playa con valor real)
+GET {{apiUrl}}/vehicles/boletas?id_playa=1
+
+### ===============================================
+### CAMERA ENDPOINTS
+### ===============================================
+
+### Get plates from camera (Reemplaza id_playa con valor real)
+GET {{apiUrl}}/camera/plates?id_playa=1
+
+### ===============================================
+### LEGACY ENDPOINTS (Backward Compatibility)
+### ===============================================
+
+### Legacy login
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "username": "YOUR_USERNAME_HERE",
+  "password": "YOUR_PASSWORD_HERE"
+}
+
+### Legacy show playas
+GET {{baseUrl}}/showPlayas
+
+### Legacy get placas
+GET {{baseUrl}}/getPlacas?idPlaya=1
+
+### Legacy get placas motos
+GET {{baseUrl}}/getPlacasMotos?idPlaya=1

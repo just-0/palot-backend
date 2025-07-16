@@ -1,139 +1,111 @@
-const express = require("express");
-const bodyParser = require('body-parser');
+const express = require('express');
 const cors = require('cors');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const request = require('request');
+const bodyParser = require('body-parser');
 require('dotenv').config();
 
+// Import configurations and middleware
+const config = require('./config/server');
+const database = require('./config/database');
+const errorHandler = require('./middleware/errorHandler');
+
+// Import routes
+const routes = require('./routes');
+
+// Create Express app
 const app = express();
-const PORT = process.env.PORT || 3000;
-const HOST = process.env.HOST || 'localhost';
 
-const db = require("./db/db");
-const utils = require("./db/utils");
-
+// Middleware
+app.use(cors({
+  origin: config.cors.origin,
+  methods: config.cors.methods,
+  allowedHeaders: config.cors.allowedHeaders.split(',')
+}));
 
 app.use(bodyParser.json());
-app.use(cors());
-app.use('/api', bodyParser.text({ type: 'application/xml' }));
-app.use('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', bodyParser.text({ type: 'text/plain' }));
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.text({ type: 'application/xml' }));
+app.use(bodyParser.text({ type: 'text/plain' }));
 
-/*-----------------------------------ROUTING---------------------------------------------*/ 
+// API Routes (new endpoints)
+app.use('/api', routes);
 
-app.get("/", (req, res) => {
-  //db.getAllAdmins(res);
-});
+// Legacy routes for backward compatibility (direct routes)
+const AuthController = require('./controllers/AuthController');
+const PlayaController = require('./controllers/PlayaController');
+const VehicleController = require('./controllers/VehicleController');
+const CameraController = require('./controllers/CameraController');
+const { validateLogin, validatePlayaId } = require('./middleware/validation');
 
-app.post("/login", (req,res) => {
-  
-  
-  const  {username, password} = req.body;
-  db.checkLogin(username, password, res)
-  
-})
+app.post('/login', validateLogin, AuthController.login);
+app.get('/showPlayas', PlayaController.getAllPlayas);
+app.get('/getPlacas', validatePlayaId, VehicleController.getAutos);
+app.get('/getPlacasMotos', validatePlayaId, VehicleController.getMotos);
+app.put('/updateStateAuto/:id_auto', VehicleController.updateAutoState);
+app.put('/updateStateMoto/:id_moto', VehicleController.updateMotoState);
+app.put('/carroPagoTicketVenta', VehicleController.processAutoPayment);
+app.put('/motoPagoTicketVenta', VehicleController.processMotoPayment);
+app.put('/createManualCar', VehicleController.createManualAuto);
+app.put('/createManualBike', VehicleController.createManualMoto);
+app.get('/getBoletas', validatePlayaId, VehicleController.getBoletas);
+app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates', validatePlayaId, CameraController.getPlatesFromCamera);
 
-
-app.get("/showPlayas", (req, res) => {
-  db.getPlayas(res);
-  
-});
-
-app.get("/getPlacasMotos", (req, res) => {
-  db.getPlacasMotos(req,res);
-  
-});
-app.get("/getPlacas", (req, res) => {
-  db.getPlacas(req,res);
-  
-});
-
-app.put("/updateStateAuto/:id_auto",  (req, res) => {
-
-   db.updateStateAuto(req,res);
-});
-
-app.put("/updateStateMoto/:id_moto",  (req, res) => {
-
-  db.updateStateMoto(req,res);
-});
-app.put("/carroPagoTicketVenta/",  (req, res) => {
-
-  db.carroPagoTicketVenta(req,res)
-});
-app.put("/motoPagoTicketVenta/",  (req, res) => {
-
-  db.motoPagoTicketVenta(req,res)
-});
-
-
-app.put("/createManualCar/",  (req, res) => {
-  
-  db.createManualCar(req,res)
-  
-});
-
-app.put("/createManualBike/",  (req, res) => {
-  
-  db.createManualBike(req,res)
-  
-});
-app.get("/getBoletas",  (req, res) => {
-  
-  db.getBoletas(req,res)
-  
-});
-
-app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates/', (req, res) => {
-  const idPlaya = req.query.id_playa;
-  console.log("PLACAS CAMARA")
-  
-  const options = {
-    method: 'GET',
-    url: process.env.CAM_URL,
-    timeout: parseInt(process.env.CAM_TIMEOUT) || 5000,
-    headers: {
-      'Content-Type': 'text/plain',
-      'Authorization': 'Basic ' + Buffer.from(process.env.CAM_USER + ':' + process.env.CAM_PASSWORD).toString('base64')
-    },
-    body: '<?xml version="1.0" encoding="UTF-8"?>\r\n<Root></Root>\r\n'
-  };
-
-  request(options, async (error, response, body) => {
-    if (error) {
-      console.error("Error during request:", error.message);
-      // En lugar de devolver error 500, devolver array vacío para que la app siga funcionando
-      console.log("Cámara no disponible, devolviendo array vacío");
-      return res.status(parseInt(process.env.HTTP_OK) || 200).json([]);
-    }
-    
-    try {
-      const parsedPlates = await utils.parseXML(body);
-      const newPlates = await db.filterNewPlates(parsedPlates);
-      await db.insertNewPlates(newPlates, idPlaya);
-      res.status(parseInt(process.env.HTTP_OK) || 200).json(newPlates);
-    } catch (parseError) {
-      console.error("Error parsing camera data:", parseError.message);
-      res.status(parseInt(process.env.HTTP_OK) || 200).json([]);
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: '🚀 Palot Backend API',
+    version: '2.0.0',
+    status: 'running',
+    environment: config.nodeEnv,
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      playas: '/api/playas',
+      vehicles: '/api/vehicles',
+      camera: '/api/camera'
     }
   });
 });
-/*--------------------------------------------------------------------------------*/ 
-app.listen(PORT, HOST, () => {
-  console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}`);
-  console.log(`📊 Entorno: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🕒 Zona horaria: ${process.env.TIMEZONE || 'America/Lima'}`);
+
+// Error handling middleware
+app.use(errorHandler);
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(config.httpCodes.NOT_FOUND).json({
+    success: false,
+    message: 'Endpoint not found'
+  });
 });
 
-process.on("exit", () => {
-  if (db.connection && db.connection.state !== "disconnected") {
-    db.connection.end((err) => {
-      if (err) {
-        console.error(
-          "Error al cerrar la conexión a la base de datos: " + err.stack
-        );
-        return;
-      }
-      console.log("Conexión a la base de datos cerrada correctamente");
-    });
-  }
+// Start server
+const server = app.listen(config.port, config.host, () => {
+  console.log('🚀 ================================');
+  console.log('🚀 PALOT BACKEND SERVER STARTED');
+  console.log('🚀 ================================');
+  console.log(`🌐 Server: http://${config.host}:${config.port}`);
+  console.log(`📊 Environment: ${config.nodeEnv}`);
+  console.log(`🕒 Timezone: ${config.timezone}`);
+  console.log(`📱 API Version: 2.0.0`);
+  console.log('🚀 ================================');
 });
+
+// Graceful shutdown
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+async function gracefulShutdown(signal) {
+  console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
+  
+  server.close(async () => {
+    console.log('🔌 HTTP server closed');
+    
+    try {
+      await database.close();
+      console.log('✅ Graceful shutdown completed');
+      process.exit(0);
+    } catch (error) {
+      console.error('❌ Error during shutdown:', error);
+      process.exit(1);
+    }
+  });
+}
