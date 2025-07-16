@@ -1,6 +1,6 @@
-const db = require('../config/database');
-const moment = require('moment-timezone');
-const config = require('../config/server');
+const db = require("../config/database");
+const moment = require("moment-timezone");
+const config = require("../config/server");
 
 class Auto {
   static async getByPlayaAndDate(idPlaya, startDate, endDate) {
@@ -31,7 +31,8 @@ class Auto {
 
   static async updateExitTime(id, exitTime, state) {
     try {
-      const query = "UPDATE Auto SET hora_salida = ?, state = ? WHERE id_auto = ?";
+      const query =
+        "UPDATE Auto SET hora_salida = ?, state = ? WHERE id_auto = ?";
       const result = await db.query(query, [exitTime, state, id]);
       return result.affectedRows > 0;
     } catch (error) {
@@ -45,9 +46,15 @@ class Auto {
         .tz(config.timezone)
         .format(process.env.DATE_FORMAT || "YYYY-MM-DD HH:mm:ss");
 
-      const query = "INSERT INTO Auto (id_playa, placa, hora_entrada, state) VALUES (?, ?, ?, ?)";
-      const result = await db.query(query, [data.id_playa, data.placa, fechaEntrada, data.state]);
-      
+      const query =
+        "INSERT INTO Auto (id_playa, placa, hora_entrada, state) VALUES (?, ?, ?, ?)";
+      const result = await db.query(query, [
+        data.id_playa,
+        data.placa,
+        fechaEntrada,
+        data.state,
+      ]);
+
       // Obtener el registro creado
       const selectQuery = "SELECT * FROM Auto WHERE id_auto = ?";
       const newAuto = await db.query(selectQuery, [result.insertId]);
@@ -61,14 +68,15 @@ class Auto {
     try {
       if (!plates || plates.length === 0) return;
 
-      const values = plates.map(plate => [
+      const values = plates.map((plate) => [
         idPlaya,
         plate.plateNumber,
         this.convertCaptureTimeToDate(plate.captureTime),
-        plate.picName
+        plate.picName,
       ]);
 
-      const query = "INSERT INTO Auto (id_playa, placa, hora_entrada, img) VALUES ?";
+      const query =
+        "INSERT INTO Auto (id_playa, placa, hora_entrada, img) VALUES ?";
       await db.query(query, [values]);
     } catch (error) {
       throw new Error(`Error inserting bulk autos: ${error.message}`);
@@ -79,7 +87,7 @@ class Auto {
     try {
       const query = "SELECT placa, hora_entrada FROM Auto WHERE placa IN (?)";
       const results = await db.query(query, [plateNumbers]);
-      return new Set(results.map(row => `${row.placa}-${row.hora_entrada}`));
+      return new Set(results.map((row) => `${row.placa}-${row.hora_entrada}`));
     } catch (error) {
       throw new Error(`Error finding existing plates: ${error.message}`);
     }

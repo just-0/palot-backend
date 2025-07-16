@@ -5,22 +5,22 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "audit": "npm audit",
+    "audit-fix": "npm audit fix",
+    "security-check": "npm audit --audit-level moderate"
   },
   "author": "Justo",
   "license": "ISC",
   "dependencies": {
-    "12": "^1.0.2",
     "@prisma/client": "^6.11.1",
-    "body-parser": "^1.20.2",
+    "axios": "^1.6.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
     "express": "^4.18.2",
-    "http-proxy-middleware": "^3.0.0",
     "moment-timezone": "^0.5.45",
-    "mysql": "^2.18.1",
     "mysql2": "^3.14.2",
-    "request": "^2.88.2",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {

@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const bodyParser = require('body-parser');
 require('dotenv').config();
 
 // Import configurations and middleware
@@ -21,10 +20,11 @@ app.use(cors({
   allowedHeaders: config.cors.allowedHeaders.split(',')
 }));
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.text({ type: 'application/xml' }));
-app.use(bodyParser.text({ type: 'text/plain' }));
+// Express built-in middleware (replaces body-parser)
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.text({ type: 'application/xml' }));
+app.use(express.text({ type: 'text/plain' }));
 
 // API Routes (new endpoints)
 app.use('/api', routes);
