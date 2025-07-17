@@ -44,7 +44,6 @@ class UserController {
           id: empleado.id_empleado,
           nombre: empleado.nombre,
           tipo: 'empleado',
-          numDias: empleado.numDias,
           playas: empleado.Trabaja.map(t => t.Playa)
         }))
       ];
@@ -65,7 +64,7 @@ class UserController {
   // Crear nuevo usuario
   static async createUser(req, res) {
     try {
-      const { nombre, password, tipo, numDias, playasAsignadas } = req.body;
+      const { nombre, password, tipo, playasAsignadas } = req.body;
 
       // Validar datos requeridos
       if (!nombre || !password || !tipo) {
@@ -93,8 +92,7 @@ class UserController {
         newUser = await prisma.empleado.create({
           data: {
             nombre,
-            hashed: hashedPassword,
-            numDias: numDias || 0
+            hashed: hashedPassword
           }
         });
 
@@ -129,7 +127,7 @@ class UserController {
   static async updateUser(req, res) {
     try {
       const { id } = req.params;
-      const { nombre, password, numDias, playasAsignadas, tipo } = req.body;
+      const { nombre, password, playasAsignadas, tipo } = req.body;
 
       let updateData = { nombre };
 
@@ -146,10 +144,6 @@ class UserController {
           data: updateData
         });
       } else if (tipo === 'empleado') {
-        if (numDias !== undefined) {
-          updateData.numDias = numDias;
-        }
-
         updatedUser = await prisma.empleado.update({
           where: { id_empleado: parseInt(id) },
           data: updateData

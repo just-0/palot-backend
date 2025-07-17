@@ -6,6 +6,7 @@ require('dotenv').config();
 const config = require('./config/server');
 const database = require('./config/database');
 const errorHandler = require('./middleware/errorHandler');
+const CronService = require('./services/CronService');
 
 // Import routes
 const routes = require('./routes');
@@ -13,11 +14,21 @@ const routes = require('./routes');
 // Create Express app
 const app = express();
 
-// Middleware
+// Middleware - CORS configuration
 app.use(cors({
-  origin: config.cors.origin,
-  methods: config.cors.methods,
-  allowedHeaders: config.cors.allowedHeaders.split(',')
+  origin: ['http://localhost:4200', 'http://127.0.0.1:4200'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'userid',
+    'usertype',
+    'X-Requested-With',
+    'Accept',
+    'Origin'
+  ],
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 
 // Express built-in middleware (replaces body-parser)
@@ -38,6 +49,7 @@ const { validateLogin, validatePlayaId } = require('./middleware/validation');
 
 app.post('/login', validateLogin, AuthController.login);
 app.get('/showPlayas', PlayaController.getAllPlayas);
+app.get('/allPlayas', PlayaController.getAllPlayasForUserManagement);
 
 // Nuevas rutas para usuarios y playas
 const UserController = require('./controllers/UserController');
@@ -47,10 +59,14 @@ app.put('/users/:id/:tipo', UserController.updateUser);
 app.delete('/users/:id/:tipo', UserController.deleteUser);
 app.get('/users/:id/:tipo/playas', UserController.getUserPlayas);
 
-// Rutas para gestión de playas
-app.post('/playas', PlayaController.createPlaya);
-app.put('/playas/:id', PlayaController.updatePlaya);
-app.delete('/playas/:id', PlayaController.deletePlaya);
+// Rutas para gestión de playas (con middleware de autenticación)
+const { authenticateUser, requireAdmin } = require('./middleware/auth');
+app.get('/playas', authenticateUser, PlayaController.getAllPlayas);
+app.post('/playas', authenticateUser, requireAdmin, PlayaController.createPlaya);
+app.put('/playas/:id', authenticateUser, requireAdmin, PlayaController.updatePlaya);
+app.delete('/playas/:id', authenticateUser, requireAdmin, PlayaController.deletePlaya);
+app.post('/playas/:id/abrir', authenticateUser, PlayaController.abrirPlaya);
+app.post('/playas/:id/cerrar', authenticateUser, PlayaController.cerrarPlaya);
 app.get('/getPlacas', validatePlayaId, VehicleController.getAutos);
 app.get('/getPlacasMotos', validatePlayaId, VehicleController.getMotos);
 app.put('/updateStateAuto/:id_auto', VehicleController.updateAutoState);
@@ -61,6 +77,25 @@ app.put('/createManualCar', VehicleController.createManualAuto);
 app.put('/createManualBike', VehicleController.createManualMoto);
 app.get('/getBoletas', validatePlayaId, VehicleController.getBoletas);
 app.get('/api/ISAPI/Traffic/channels/1/vehicleDetect/plates', validatePlayaId, CameraController.getPlatesFromCamera);
+
+// Debug endpoint para verificar headers
+app.get('/debug-headers', (req, res) => {
+  res.json({
+    headers: req.headers,
+    userId: req.headers.userid,
+    userType: req.headers.usertype,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Debug endpoint con autenticación
+app.get('/debug-auth', authenticateUser, (req, res) => {
+  res.json({
+    message: 'Authentication successful!',
+    user: req.user,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -74,7 +109,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       playas: '/api/playas',
       vehicles: '/api/vehicles',
-      camera: '/api/camera'
+      camera: '/api/camera',
+      debug: '/debug-headers'
     }
   });
 });
@@ -100,6 +136,9 @@ const server = app.listen(config.port, config.host, () => {
   console.log(`🕒 Timezone: ${config.timezone}`);
   console.log(`📱 API Version: 2.0.0`);
   console.log('🚀 ================================');
+  
+  // Inicializar servicios de cron
+  CronService.init();
 });
 
 // Graceful shutdown

@@ -1,5 +1,3 @@
-// Este archivo define el modelo de datos basado en tu diagrama y está listo para usar con MySQL
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,72 +8,84 @@ datasource db {
 }
 
 model Admin {
-  nombre String @id
+  nombre String  @id
   hashed String
   Playa  Playa[] @relation("AdminPlaya")
 }
 
 model Playa {
-  id_playa     Int      @id @default(autoincrement())
+  id_playa     Int       @id @default(autoincrement())
   nombre_admin String
   nombre       String
   direccion    String?
-  hashed       String?
   tarifaAuto   Float?
   tarifaMoto   Float?
+  horaAbierto  DateTime?
+  horaCerrado  DateTime?
+  usuarioAbrio String?
+  usuarioCerro String?
+  estado       String    @default("cerrado") // "abierto" o "cerrado"
   Auto         Auto[]
   Moto         Moto[]
+  Admin        Admin     @relation("AdminPlaya", fields: [nombre_admin], references: [nombre])
   Trabaja      Trabaja[]
-  Admin        Admin   @relation(fields: [nombre_admin], references: [nombre], name: "AdminPlaya")
+
+  @@index([nombre_admin], map: "Playa_nombre_admin_fkey")
 }
 
 model Auto {
-  id_auto      Int      @id @default(autoincrement())
+  id_auto      Int       @id @default(autoincrement())
   id_playa     Int
   placa        String
   hora_entrada DateTime
   hora_salida  DateTime?
   image        String?
   state        Int?
-  Cliente      Cliente?
+  Playa        Playa     @relation(fields: [id_playa], references: [id_playa])
   Boleta       Boleta[]
-  Playa        Playa    @relation(fields: [id_playa], references: [id_playa])
+  Cliente      Cliente?
+
+  @@index([id_playa], map: "Auto_id_playa_fkey")
 }
 
 model Moto {
-  id_moto      Int      @id @default(autoincrement())
+  id_moto      Int       @id @default(autoincrement())
   id_playa     Int
   placa        String
   hora_entrada DateTime
   hora_salida  DateTime?
   image        String?
   state        Int?
-  Playa        Playa    @relation(fields: [id_playa], references: [id_playa])
+  Playa        Playa     @relation(fields: [id_playa], references: [id_playa])
+
+  @@index([id_playa], map: "Moto_id_playa_fkey")
 }
 
 model Cliente {
-  id_cliente Int    @id @default(autoincrement())
-  id_auto    Int    @unique
+  id_cliente Int      @id @default(autoincrement())
+  id_auto    Int      @unique
   nombre     String
   dni_ruc    String
-  Auto       Auto   @relation(fields: [id_auto], references: [id_auto])
   Boleta     Boleta[]
+  Auto       Auto     @relation(fields: [id_auto], references: [id_auto])
 }
 
 model Boleta {
-  id_boleta    Int      @id @default(autoincrement())
-  id_auto      Int
-  id_cliente   Int
-  total_pagar  Float
+  id_boleta     Int      @id @default(autoincrement())
+  id_auto       Int
+  id_cliente    Int
+  total_pagar   Float
   fecha_emision DateTime
-  Auto         Auto     @relation(fields: [id_auto], references: [id_auto])
-  Cliente      Cliente  @relation(fields: [id_cliente], references: [id_cliente])
+  Auto          Auto     @relation(fields: [id_auto], references: [id_auto])
+  Cliente       Cliente  @relation(fields: [id_cliente], references: [id_cliente])
+
+  @@index([id_auto], map: "Boleta_id_auto_fkey")
+  @@index([id_cliente], map: "Boleta_id_cliente_fkey")
 }
 
 model Empleado {
-  id_empleado Int    @id @default(autoincrement())
+  id_empleado Int       @id @default(autoincrement())
   nombre      String
-  numDias     Int?
   hashed      String
   Trabaja     Trabaja[]
 }
@@ -87,4 +97,5 @@ model Trabaja {
   Playa       Playa    @relation(fields: [id_playa], references: [id_playa])
 
   @@id([id_empleado, id_playa])
-} 
+  @@index([id_playa], map: "Trabaja_id_playa_fkey")
+}

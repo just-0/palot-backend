@@ -1,7 +1,7 @@
-const Admin = require('../models/Admin');
-const config = require('../config/server');
-const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcrypt');
+const Admin = require("../models/Admin");
+const config = require("../config/server");
+const { PrismaClient } = require("@prisma/client");
+const bcrypt = require("bcrypt");
 
 const prisma = new PrismaClient();
 
@@ -12,7 +12,7 @@ class AuthService {
         return {
           success: false,
           code: config.loginErrors.DB_ERROR,
-          message: 'Username and password are required'
+          message: "Username and password are required",
         };
       }
 
@@ -23,13 +23,13 @@ class AuthService {
           Playa: {
             select: {
               id_playa: true,
-              nombre: true
-            }
-          }
-        }
+              nombre: true,
+            },
+          },
+        },
       });
 
-      let userType = 'admin';
+      let userType = "admin";
       let userPlayas = [];
 
       // Si no es admin, buscar en empleados
@@ -42,21 +42,21 @@ class AuthService {
                 Playa: {
                   select: {
                     id_playa: true,
-                    nombre: true
-                  }
-                }
-              }
-            }
-          }
+                    nombre: true,
+                  },
+                },
+              },
+            },
+          },
         });
-        userType = 'empleado';
+        userType = "empleado";
       }
 
       if (!user) {
         return {
           success: false,
           code: config.loginErrors.USER_NOT_FOUND,
-          message: 'User not found'
+          message: "User not found",
         };
       }
 
@@ -73,34 +73,34 @@ class AuthService {
         return {
           success: false,
           code: config.loginErrors.WRONG_PASSWORD,
-          message: 'Invalid password'
+          message: "Invalid password",
         };
       }
 
       // Preparar información de playas según el tipo de usuario
-      if (userType === 'admin') {
+      if (userType === "admin") {
         userPlayas = user.Playa || [];
       } else {
-        userPlayas = user.Trabaja ? user.Trabaja.map(t => t.Playa) : [];
+        userPlayas = user.Trabaja ? user.Trabaja.map((t) => t.Playa) : [];
       }
 
       return {
         success: true,
-        message: 'Login successful',
+        message: "Login successful",
         user: {
-          id: userType === 'admin' ? user.nombre : user.id_empleado,
+          id: userType === "admin" ? user.nombre : user.id_empleado,
           nombre: user.nombre,
           tipo: userType,
           playas: userPlayas,
-          numDias: userType === 'empleado' ? user.numDias : null
-        }
+          numDias: userType === "empleado" ? user.numDias : null,
+        },
       };
     } catch (error) {
-      console.error('Login error:', error);
+      console.error("Login error:", error);
       return {
         success: false,
         code: config.loginErrors.DB_ERROR,
-        message: 'Database error'
+        message: "Database error",
       };
     }
   }
