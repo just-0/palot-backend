@@ -38,6 +38,19 @@ const { validateLogin, validatePlayaId } = require('./middleware/validation');
 
 app.post('/login', validateLogin, AuthController.login);
 app.get('/showPlayas', PlayaController.getAllPlayas);
+
+// Nuevas rutas para usuarios y playas
+const UserController = require('./controllers/UserController');
+app.get('/users', UserController.getAllUsers);
+app.post('/users', UserController.createUser);
+app.put('/users/:id/:tipo', UserController.updateUser);
+app.delete('/users/:id/:tipo', UserController.deleteUser);
+app.get('/users/:id/:tipo/playas', UserController.getUserPlayas);
+
+// Rutas para gestión de playas
+app.post('/playas', PlayaController.createPlaya);
+app.put('/playas/:id', PlayaController.updatePlaya);
+app.delete('/playas/:id', PlayaController.deletePlaya);
 app.get('/getPlacas', validatePlayaId, VehicleController.getAutos);
 app.get('/getPlacasMotos', validatePlayaId, VehicleController.getMotos);
 app.put('/updateStateAuto/:id_auto', VehicleController.updateAutoState);

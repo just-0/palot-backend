@@ -3,6 +3,7 @@ const authRoutes = require('./auth');
 const playaRoutes = require('./playas');
 const vehicleRoutes = require('./vehicles');
 const cameraRoutes = require('./camera');
+const userRoutes = require('./users');
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.use('/auth', authRoutes);
 router.use('/playas', playaRoutes);
 router.use('/vehicles', vehicleRoutes);
 router.use('/camera', cameraRoutes);
+router.use('/users', userRoutes);
 
 // Legacy routes for backward compatibility
 const AuthController = require('../controllers/AuthController');

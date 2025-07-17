@@ -11,4 +11,11 @@ const router = express.Router();
  */
 router.post('/login', validateLogin, AuthController.login);
 
+/**
+ * @route GET /api/auth/check-users
+ * @desc Check existing users (temporary endpoint)
+ * @access Public
+ */
+router.get('/check-users', AuthController.checkUsers);
+
 module.exports = router;
