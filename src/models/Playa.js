@@ -20,6 +20,51 @@ class Playa {
       throw new Error(`Error finding playa: ${error.message}`);
     }
   }
+
+  static async getById(id) {
+    return this.findById(id);
+  }
+
+  static async create(data) {
+    try {
+      const query = `
+        INSERT INTO Playa (nombre_admin, nombre, direccion, tarifaAuto, tarifaMoto, facturacion) 
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+      const result = await db.query(query, [
+        data.nombre_admin,
+        data.nombre,
+        data.direccion || null,
+        data.tarifaAuto || null,
+        data.tarifaMoto || null,
+        data.facturacion || false
+      ]);
+      return result.insertId;
+    } catch (error) {
+      throw new Error(`Error creating playa: ${error.message}`);
+    }
+  }
+
+  static async update(id, data) {
+    try {
+      const query = `
+        UPDATE Playa 
+        SET nombre = ?, direccion = ?, tarifaAuto = ?, tarifaMoto = ?, facturacion = ?
+        WHERE id_playa = ?
+      `;
+      const result = await db.query(query, [
+        data.nombre,
+        data.direccion || null,
+        data.tarifaAuto || null,
+        data.tarifaMoto || null,
+        data.facturacion || false,
+        id
+      ]);
+      return result.affectedRows > 0;
+    } catch (error) {
+      throw new Error(`Error updating playa: ${error.message}`);
+    }
+  }
 }
 
 module.exports = Playa;

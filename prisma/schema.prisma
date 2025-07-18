@@ -25,6 +25,7 @@ model Playa {
   usuarioAbrio String?
   usuarioCerro String?
   estado       String    @default("cerrado") // "abierto" o "cerrado"
+  facturacion  Boolean   @default(false) // true si requiere facturación SUNAT
   Auto         Auto[]
   Moto         Moto[]
   Admin        Admin     @relation("AdminPlaya", fields: [nombre_admin], references: [nombre])
@@ -43,6 +44,8 @@ model Auto {
   state        Int?
   Playa        Playa     @relation(fields: [id_playa], references: [id_playa])
   Boleta       Boleta[]
+  Ticket       Ticket[]
+  Factura      Factura[]
   Cliente      Cliente?
 
   @@index([id_playa], map: "Auto_id_playa_fkey")
@@ -57,30 +60,70 @@ model Moto {
   image        String?
   state        Int?
   Playa        Playa     @relation(fields: [id_playa], references: [id_playa])
+  Boleta       Boleta[]
+  Ticket       Ticket[]
+  Factura      Factura[]
 
   @@index([id_playa], map: "Moto_id_playa_fkey")
 }
 
 model Cliente {
-  id_cliente Int      @id @default(autoincrement())
-  id_auto    Int      @unique
+  id_cliente Int       @id @default(autoincrement())
+  id_auto    Int?      @unique
   nombre     String
   dni_ruc    String
   Boleta     Boleta[]
-  Auto       Auto     @relation(fields: [id_auto], references: [id_auto])
+  Ticket     Ticket[]
+  Factura    Factura[]
+  Auto       Auto?     @relation(fields: [id_auto], references: [id_auto])
 }
 
 model Boleta {
   id_boleta     Int      @id @default(autoincrement())
-  id_auto       Int
-  id_cliente    Int
+  id_auto       Int?
+  id_moto       Int?
+  id_cliente    Int?
   total_pagar   Float
   fecha_emision DateTime
-  Auto          Auto     @relation(fields: [id_auto], references: [id_auto])
-  Cliente       Cliente  @relation(fields: [id_cliente], references: [id_cliente])
+  Auto          Auto?    @relation(fields: [id_auto], references: [id_auto])
+  Moto          Moto?    @relation(fields: [id_moto], references: [id_moto])
+  Cliente       Cliente? @relation(fields: [id_cliente], references: [id_cliente])
 
   @@index([id_auto], map: "Boleta_id_auto_fkey")
+  @@index([id_moto], map: "Boleta_id_moto_fkey")
   @@index([id_cliente], map: "Boleta_id_cliente_fkey")
+}
+
+model Ticket {
+  id_ticket     Int      @id @default(autoincrement())
+  id_auto       Int?
+  id_moto       Int?
+  id_cliente    Int?
+  total_pagar   Float
+  fecha_emision DateTime
+  Auto          Auto?    @relation(fields: [id_auto], references: [id_auto])
+  Moto          Moto?    @relation(fields: [id_moto], references: [id_moto])
+  Cliente       Cliente? @relation(fields: [id_cliente], references: [id_cliente])
+
+  @@index([id_auto], map: "Ticket_id_auto_fkey")
+  @@index([id_moto], map: "Ticket_id_moto_fkey")
+  @@index([id_cliente], map: "Ticket_id_cliente_fkey")
+}
+
+model Factura {
+  id_factura    Int      @id @default(autoincrement())
+  id_auto       Int?
+  id_moto       Int?
+  id_cliente    Int?
+  total_pagar   Float
+  fecha_emision DateTime
+  Auto          Auto?    @relation(fields: [id_auto], references: [id_auto])
+  Moto          Moto?    @relation(fields: [id_moto], references: [id_moto])
+  Cliente       Cliente? @relation(fields: [id_cliente], references: [id_cliente])
+
+  @@index([id_auto], map: "Factura_id_auto_fkey")
+  @@index([id_moto], map: "Factura_id_moto_fkey")
+  @@index([id_cliente], map: "Factura_id_cliente_fkey")
 }
 
 model Empleado {

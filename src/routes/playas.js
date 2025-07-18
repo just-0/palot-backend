@@ -39,4 +39,18 @@ router.delete('/:id', authenticateUser, requireAdmin, PlayaController.deletePlay
  */
 router.get('/:id', authenticateUser, checkPlayaAccess, PlayaController.getPlayaById);
 
+/**
+ * @route POST /api/playas/:id/abrir
+ * @desc Open playa
+ * @access Private - Admin or assigned employee
+ */
+router.post('/:id/abrir', authenticateUser, checkPlayaAccess, PlayaController.abrirPlaya);
+
+/**
+ * @route POST /api/playas/:id/cerrar
+ * @desc Close playa
+ * @access Private - Admin or assigned employee
+ */
+router.post('/:id/cerrar', authenticateUser, checkPlayaAccess, PlayaController.cerrarPlaya);
+
 module.exports = router;

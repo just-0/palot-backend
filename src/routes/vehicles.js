@@ -67,4 +67,11 @@ router.put('/motos/manual', validateManualVehicle, VehicleController.createManua
  */
 router.get('/boletas', validatePlayaId, VehicleController.getBoletas);
 
+/**
+ * @route GET /api/vehicles/tickets
+ * @desc Get tickets by playa
+ * @access Public
+ */
+router.get('/tickets', validatePlayaId, VehicleController.getTickets);
+
 module.exports = router;

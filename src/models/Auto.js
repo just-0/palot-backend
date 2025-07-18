@@ -6,11 +6,22 @@ class Auto {
   static async getByPlayaAndDate(idPlaya, startDate, endDate) {
     try {
       const query = `
-        SELECT Auto.*, Boleta.total_pagar
+        SELECT 
+          Auto.*,
+          COALESCE(Boleta.total_pagar, Ticket.total_pagar, Factura.total_pagar) AS total_pagar,
+          CASE 
+            WHEN Boleta.id_boleta IS NOT NULL THEN 'Boleta'
+            WHEN Ticket.id_ticket IS NOT NULL THEN 'Ticket'
+            WHEN Factura.id_factura IS NOT NULL THEN 'Factura'
+            ELSE NULL
+          END AS tipo_documento
         FROM Auto
         LEFT JOIN Boleta ON Auto.id_auto = Boleta.id_auto
+        LEFT JOIN Ticket ON Auto.id_auto = Ticket.id_auto
+        LEFT JOIN Factura ON Auto.id_auto = Factura.id_auto
         WHERE Auto.id_playa = ?
           AND Auto.hora_entrada BETWEEN ? AND ?
+        ORDER BY Auto.hora_entrada DESC
       `;
       const results = await db.query(query, [idPlaya, startDate, endDate]);
       return results;
@@ -37,6 +48,16 @@ class Auto {
       return result.affectedRows > 0;
     } catch (error) {
       throw new Error(`Error updating auto exit time: ${error.message}`);
+    }
+  }
+
+  static async findById(id) {
+    try {
+      const query = "SELECT * FROM Auto WHERE id_auto = ?";
+      const results = await db.query(query, [id]);
+      return results.length > 0 ? results[0] : null;
+    } catch (error) {
+      throw new Error(`Error finding auto: ${error.message}`);
     }
   }
 

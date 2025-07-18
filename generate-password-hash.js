@@ -14,7 +14,7 @@ async function generateHash() {
     console.log(`Password: ${password}`);
     console.log(`Hash: ${hash}`);
     console.log('\nSQL Example:');
-    console.log(`INSERT INTO Empleado (nombre, numDias, hashed) VALUES ('username', 10, '${hash}');`);
+    console.log(`INSERT INTO Admin(nombre, hashed) VALUES ('username', '${hash}');`);
   } catch (error) {
     console.error('Error generating hash:', error);
   }

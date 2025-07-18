@@ -20,6 +20,7 @@ class PlayaController {
             tarifaAuto: true,
             tarifaMoto: true,
             estado: true,
+            facturacion: true,
             horaAbierto: true,
             horaCerrado: true,
             usuarioAbrio: true,
@@ -45,6 +46,7 @@ class PlayaController {
                 tarifaAuto: true,
                 tarifaMoto: true,
                 estado: true,
+                facturacion: true,
                 horaAbierto: true,
                 horaCerrado: true,
                 usuarioAbrio: true,
@@ -75,7 +77,7 @@ class PlayaController {
   // Crear nueva playa (solo para admin)
   static async createPlaya(req, res) {
     try {
-      const { nombre_admin, nombre, direccion, tarifaAuto, tarifaMoto } =
+      const { nombre_admin, nombre, direccion, tarifaAuto, tarifaMoto, facturacion } =
         req.body;
 
       // Validar datos requeridos
@@ -106,6 +108,7 @@ class PlayaController {
           direccion: direccion || null,
           tarifaAuto: tarifaAuto ? parseFloat(tarifaAuto) : null,
           tarifaMoto: tarifaMoto ? parseFloat(tarifaMoto) : null,
+          facturacion: facturacion || false,
         },
       });
 
@@ -136,7 +139,7 @@ class PlayaController {
   static async updatePlaya(req, res) {
     try {
       const { id } = req.params;
-      const { nombre, direccion, tarifaAuto, tarifaMoto } = req.body;
+      const { nombre, direccion, tarifaAuto, tarifaMoto, facturacion } = req.body;
 
       const updatedPlaya = await prisma.playa.update({
         where: { id_playa: parseInt(id) },
@@ -145,6 +148,7 @@ class PlayaController {
           direccion: direccion !== undefined ? direccion : undefined,
           tarifaAuto: tarifaAuto ? parseFloat(tarifaAuto) : undefined,
           tarifaMoto: tarifaMoto ? parseFloat(tarifaMoto) : undefined,
+          facturacion: facturacion !== undefined ? facturacion : undefined,
         },
       });
 

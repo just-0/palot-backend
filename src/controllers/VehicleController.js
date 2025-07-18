@@ -199,6 +199,28 @@ class VehicleController {
       });
     }
   }
+
+  static async getTickets(req, res) {
+    try {
+      const idPlaya = req.query.id_playa;
+      const result = await VehicleService.getTickets(idPlaya);
+
+      if (result.success) {
+        res.status(config.httpCodes.OK).json(result.data);
+      } else {
+        res.status(config.httpCodes.INTERNAL_ERROR).json({
+          success: false,
+          message: result.message
+        });
+      }
+    } catch (error) {
+      console.error('Get tickets controller error:', error);
+      res.status(config.httpCodes.INTERNAL_ERROR).json({
+        success: false,
+        message: 'Internal server error'
+      });
+    }
+  }
 }
 
 module.exports = VehicleController;
