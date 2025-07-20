@@ -20,12 +20,16 @@ model Playa {
   direccion    String?
   tarifaAuto   Float?
   tarifaMoto   Float?
+  tolerancia   Int       // Tolerancia en minutos (obligatorio)
   horaAbierto  DateTime?
   horaCerrado  DateTime?
   usuarioAbrio String?
   usuarioCerro String?
   estado       String    @default("cerrado") // "abierto" o "cerrado"
   facturacion  Boolean   @default(false) // true si requiere facturación SUNAT
+  cam_url      String?   // URL de la cámara
+  cam_user     String?   // Usuario de la cámara
+  cam_password String?   // Contraseña de la cámara
   Auto         Auto[]
   Moto         Moto[]
   Admin        Admin     @relation("AdminPlaya", fields: [nombre_admin], references: [nombre])

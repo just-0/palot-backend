@@ -19,12 +19,16 @@ class PlayaController {
             direccion: true,
             tarifaAuto: true,
             tarifaMoto: true,
+            tolerancia: true,
             estado: true,
             facturacion: true,
             horaAbierto: true,
             horaCerrado: true,
             usuarioAbrio: true,
             usuarioCerro: true,
+            cam_url: true,
+            cam_user: true,
+            cam_password: true,
             Auto: {
               select: { id_auto: true, state: true },
             },
@@ -45,12 +49,16 @@ class PlayaController {
                 direccion: true,
                 tarifaAuto: true,
                 tarifaMoto: true,
+                tolerancia: true,
                 estado: true,
                 facturacion: true,
                 horaAbierto: true,
                 horaCerrado: true,
                 usuarioAbrio: true,
                 usuarioCerro: true,
+                cam_url: true,
+                cam_user: true,
+                cam_password: true,
                 Auto: {
                   select: { id_auto: true, state: true },
                 },
@@ -77,14 +85,23 @@ class PlayaController {
   // Crear nueva playa (solo para admin)
   static async createPlaya(req, res) {
     try {
-      const { nombre_admin, nombre, direccion, tarifaAuto, tarifaMoto, facturacion } =
+      const { nombre_admin, nombre, direccion, tarifaAuto, tarifaMoto, tolerancia, facturacion, cam_url, cam_user, cam_password } =
         req.body;
 
       // Validar datos requeridos
-      if (!nombre_admin || !nombre) {
+      if (!nombre_admin || !nombre || tolerancia === undefined || tolerancia === null) {
         return res.status(config.httpCodes.BAD_REQUEST).json({
           success: false,
-          message: "Nombre del admin y nombre de la playa son requeridos",
+          message: "Nombre del admin, nombre de la playa y tolerancia son requeridos",
+        });
+      }
+
+      // Validar que tolerancia sea un número entero positivo
+      const toleranciaInt = parseInt(tolerancia);
+      if (isNaN(toleranciaInt) || toleranciaInt < 0) {
+        return res.status(config.httpCodes.BAD_REQUEST).json({
+          success: false,
+          message: "La tolerancia debe ser un número entero mayor o igual a 0",
         });
       }
 
@@ -108,7 +125,11 @@ class PlayaController {
           direccion: direccion || null,
           tarifaAuto: tarifaAuto ? parseFloat(tarifaAuto) : null,
           tarifaMoto: tarifaMoto ? parseFloat(tarifaMoto) : null,
+          tolerancia: toleranciaInt,
           facturacion: facturacion || false,
+          cam_url: cam_url || null,
+          cam_user: cam_user || null,
+          cam_password: cam_password || null,
         },
       });
 
@@ -139,7 +160,19 @@ class PlayaController {
   static async updatePlaya(req, res) {
     try {
       const { id } = req.params;
-      const { nombre, direccion, tarifaAuto, tarifaMoto, facturacion } = req.body;
+      const { nombre, direccion, tarifaAuto, tarifaMoto, tolerancia, facturacion, cam_url, cam_user, cam_password } = req.body;
+
+      // Validar tolerancia si se proporciona
+      let toleranciaInt = undefined;
+      if (tolerancia !== undefined && tolerancia !== null) {
+        toleranciaInt = parseInt(tolerancia);
+        if (isNaN(toleranciaInt) || toleranciaInt < 0) {
+          return res.status(config.httpCodes.BAD_REQUEST).json({
+            success: false,
+            message: "La tolerancia debe ser un número entero mayor o igual a 0",
+          });
+        }
+      }
 
       const updatedPlaya = await prisma.playa.update({
         where: { id_playa: parseInt(id) },
@@ -148,7 +181,11 @@ class PlayaController {
           direccion: direccion !== undefined ? direccion : undefined,
           tarifaAuto: tarifaAuto ? parseFloat(tarifaAuto) : undefined,
           tarifaMoto: tarifaMoto ? parseFloat(tarifaMoto) : undefined,
+          tolerancia: toleranciaInt,
           facturacion: facturacion !== undefined ? facturacion : undefined,
+          cam_url: cam_url !== undefined ? cam_url : undefined,
+          cam_user: cam_user !== undefined ? cam_user : undefined,
+          cam_password: cam_password !== undefined ? cam_password : undefined,
         },
       });
 
