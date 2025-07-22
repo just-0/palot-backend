@@ -38,6 +38,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.text({ type: "application/xml" }));
 app.use(express.text({ type: "text/plain" }));
+// Middleware para manejar imágenes JPEG de cámaras Hikvision
+app.use(express.raw({ type: "image/jpeg", limit: "10mb" }));
+app.use(express.raw({ type: "image/png", limit: "10mb" }));
+app.use(express.raw({ type: "application/octet-stream", limit: "10mb" }));
 
 // Middleware de logging para capturar TODAS las peticiones
 app.use((req, res, next) => {
