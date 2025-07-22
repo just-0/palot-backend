@@ -83,6 +83,7 @@ class Playa {
       
       if (results.length > 0) {
         console.log(`✅ Playa encontrada por cam_url: ${results[0].nombre} (ID: ${results[0].id_playa})`);
+        console.log(`📊 Datos completos de la playa:`, JSON.stringify(results[0], null, 2));
         return results[0];
       }
 

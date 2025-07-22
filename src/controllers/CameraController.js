@@ -21,10 +21,14 @@ class CameraController {
 
   static async receiveVehicleDetection(req, res) {
     try {
-      console.log("📷 NOTIFICACIÓN CÁMARA HIKVISION");
+      console.log("🚨 ===== NOTIFICACIÓN CÁMARA HIKVISION =====");
       console.log("📍 IP Origen:", req.ip || req.connection.remoteAddress);
-      console.log("🔍 Query params:", req.query);
-      console.log("📋 Headers:", req.headers);
+      console.log("🔍 Query params:", JSON.stringify(req.query, null, 2));
+      console.log("📋 Headers:", JSON.stringify(req.headers, null, 2));
+      console.log("📦 Body:", JSON.stringify(req.body, null, 2));
+      console.log("🌐 URL completa:", req.url);
+      console.log("🔧 Método:", req.method);
+      console.log("🚨 ============================================");
 
       const { licensePlate, eventType, channelID, confidenceLevel, dateTime, lane, direction, country } = req.query;
 
@@ -47,7 +51,7 @@ class CameraController {
         lane,
         direction,
         country,
-        sourceIP: req.ip || req.connection.remoteAddress,
+        sourceIP: req.headers['x-forwarded-for'] || req.headers['x-real-ip'] || req.ip || req.connection.remoteAddress,
         headers: req.headers
       });
 

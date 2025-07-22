@@ -39,6 +39,20 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.text({ type: "application/xml" }));
 app.use(express.text({ type: "text/plain" }));
 
+// Middleware de logging para capturar TODAS las peticiones
+app.use((req, res, next) => {
+  const timestamp = new Date().toISOString();
+  console.log(`\n🌐 [${timestamp}] ${req.method} ${req.url}`);
+  console.log(`📍 IP: ${req.ip || req.connection.remoteAddress}`);
+  console.log(`🔍 Query: ${JSON.stringify(req.query)}`);
+  console.log(`📋 Headers: ${JSON.stringify(req.headers, null, 2)}`);
+  if (Object.keys(req.body || {}).length > 0) {
+    console.log(`📦 Body: ${JSON.stringify(req.body)}`);
+  }
+  console.log(`---`);
+  next();
+});
+
 // API Routes (new endpoints)
 app.use("/api", routes);
 
