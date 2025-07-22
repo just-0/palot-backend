@@ -125,6 +125,16 @@ class Auto {
     const formattedDate = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
     return new Date(formattedDate);
   }
+
+  static async findActiveByPlate(placa, idPlaya) {
+    try {
+      const query = "SELECT * FROM Auto WHERE placa = ? AND id_playa = ? AND hora_salida IS NULL LIMIT 1";
+      const results = await db.query(query, [placa, idPlaya]);
+      return results.length > 0 ? results[0] : null;
+    } catch (error) {
+      throw new Error(`Error finding active auto by plate: ${error.message}`);
+    }
+  }
 }
 
 module.exports = Auto;

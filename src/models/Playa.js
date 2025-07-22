@@ -65,6 +65,55 @@ class Playa {
       throw new Error(`Error updating playa: ${error.message}`);
     }
   }
+
+  static async findByCameraIP(sourceIP) {
+    try {
+      console.log(`🔍 Buscando playa para IP de cámara: ${sourceIP}`);
+      
+      // Buscar playa que tenga configurada la URL de cámara con esta IP
+      // Probamos diferentes formatos de búsqueda
+      let query = "SELECT * FROM Playa WHERE cam_url LIKE ? OR cam_url LIKE ? OR cam_url LIKE ?";
+      let searchPatterns = [
+        `%${sourceIP}%`,           // IP en cualquier parte de la URL
+        `http://${sourceIP}%`,     // IP al inicio con http
+        `https://${sourceIP}%`     // IP al inicio con https
+      ];
+      
+      let results = await db.query(query, searchPatterns);
+      
+      if (results.length > 0) {
+        console.log(`✅ Playa encontrada por cam_url: ${results[0].nombre} (ID: ${results[0].id_playa})`);
+        return results[0];
+      }
+
+      // Si no se encuentra por cam_url, buscar cualquier playa abierta como fallback
+      console.log(`⚠️ No se encontró playa específica para IP ${sourceIP}`);
+      query = "SELECT * FROM Playa WHERE estado = 'abierto' ORDER BY id_playa ASC LIMIT 1";
+      results = await db.query(query);
+      
+      if (results.length > 0) {
+        console.log(`📍 Usando playa por defecto: ${results[0].nombre} (ID: ${results[0].id_playa})`);
+        return results[0];
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error finding playa by camera IP:', error);
+      return null;
+    }
+  }
+
+  static async getFirstAvailable() {
+    try {
+      // Obtener la primera playa disponible (abierta)
+      const query = "SELECT * FROM Playa WHERE estado = 'abierto' LIMIT 1";
+      const results = await db.query(query);
+      return results.length > 0 ? results[0] : null;
+    } catch (error) {
+      console.error('Error getting first available playa:', error);
+      return null;
+    }
+  }
 }
 
 module.exports = Playa;
