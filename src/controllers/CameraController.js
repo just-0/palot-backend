@@ -35,110 +35,181 @@ class CameraController {
       console.log("🔧 Método:", req.method);
       console.log("🌐 URL:", req.url);
       console.log("📋 Content-Type:", req.headers["content-type"]);
-      console.log("� Body  raw:", req.body);
-      console.log("📦 Body type:", typeof req.body);
+      console.log("📦 Query Params:", JSON.stringify(req.query, null, 2));
       console.log("🚨 ============================================");
 
-      // Validar que el contenido sea XML
-      if (
-        !req.headers["content-type"]?.includes("application/xml") &&
-        !req.headers["content-type"]?.includes("text/xml")
+      let eventType, plateNumber, channelID, dateTime, eventState;
+      let dataSource = "unknown";
+
+      // DETECTAR FORMATO: Query Params vs XML
+      if (req.query && Object.keys(req.query).length > 0 && req.query.licensePlate) {
+        // FORMATO 1: Datos en Query Params (detección de placas real)
+        console.log("📋 FORMATO: Query Params (detección de placas)");
+
+        eventType = req.query.eventType;
+        plateNumber = req.query.licensePlate || req.query.plateNumber;
+        channelID = req.query.channelID;
+        dateTime = req.query.dateTime;
+        eventState = "active"; // Asumir activo para query params
+        dataSource = "query";
+
+        console.log("📊 Datos extraídos de Query Params:", {
+          eventType,
+          plateNumber,
+          channelID,
+          dateTime,
+          eventState,
+          country: req.query.country,
+          lane: req.query.lane,
+          direction: req.query.direction,
+          confidenceLevel: req.query.confidenceLevel,
+        });
+      } else if (
+        req.headers["content-type"]?.includes("application/xml") ||
+        req.headers["content-type"]?.includes("text/xml")
       ) {
-        console.log("❌ RECHAZADO: Content-Type no es XML");
+        // FORMATO 2: Datos en XML (eventos de movimiento, etc.)
+        console.log("📋 FORMATO: XML Body");
+
+        // Validar que haya contenido en el body
+        if (!req.body || req.body.trim() === "") {
+          console.log("❌ RECHAZADO: Body XML vacío");
+          return res.status(config.httpCodes.BAD_REQUEST).json({
+            success: false,
+            message: "Invalid notification: XML body is required",
+          });
+        }
+
+        console.log("📄 XML recibido:", req.body);
+
+        // Parsear el XML
+        const parser = new xml2js.Parser({
+          explicitArray: false,
+          ignoreAttrs: false,
+          trim: true,
+        });
+
+        let parsedXML;
+        try {
+          parsedXML = await parser.parseStringPromise(req.body);
+          console.log(
+            "✅ XML parseado exitosamente:",
+            JSON.stringify(parsedXML, null, 2)
+          );
+        } catch (xmlError) {
+          console.log("❌ ERROR parseando XML:", xmlError.message);
+          return res.status(config.httpCodes.BAD_REQUEST).json({
+            success: false,
+            message: "Invalid XML format",
+          });
+        }
+
+        // Extraer datos del XML parseado
+        const alarmEvent =
+          parsedXML.AlarmEvent || parsedXML.EventNotificationAlert;
+        if (!alarmEvent) {
+          console.log(
+            "❌ RECHAZADO: No se encontró AlarmEvent o EventNotificationAlert en el XML"
+          );
+          return res.status(config.httpCodes.BAD_REQUEST).json({
+            success: false,
+            message: "Invalid XML: AlarmEvent or EventNotificationAlert not found",
+          });
+        }
+
+        eventType = alarmEvent.eventType;
+        plateNumber =
+          alarmEvent.plateNumber ||
+          alarmEvent.licensePlate ||
+          alarmEvent.plateNo;
+        channelID = alarmEvent.channelID;
+        dateTime = alarmEvent.dateTime;
+        eventState = alarmEvent.eventState;
+        dataSource = "xml";
+
+        console.log("📊 Datos extraídos del XML:", {
+          eventType,
+          plateNumber,
+          channelID,
+          dateTime,
+          eventState,
+          xmlType: parsedXML.AlarmEvent ? "AlarmEvent" : "EventNotificationAlert",
+        });
+      } else {
+        // FORMATO DESCONOCIDO
+        console.log("❌ RECHAZADO: Formato no reconocido");
+        console.log("   Content-Type:", req.headers["content-type"]);
+        console.log("   Query params:", Object.keys(req.query).length);
+
         return res.status(config.httpCodes.BAD_REQUEST).json({
           success: false,
-          message: "Invalid content type: expected application/xml or text/xml",
+          message: "Invalid format: expected query params with licensePlate or XML",
         });
       }
 
-      // Validar que haya contenido en el body
-      if (!req.body || req.body.trim() === "") {
-        console.log("❌ RECHAZADO: Body XML vacío");
-        return res.status(config.httpCodes.BAD_REQUEST).json({
-          success: false,
-          message: "Invalid notification: XML body is required",
-        });
-      }
+      // FILTRO PRINCIPAL: Solo procesar eventos de detección de placas
+      const validVehicleEvents = [
+        "vehicleDetection",
+        "ANPR", // Automatic Number Plate Recognition
+        "plateRecognition",
+        "licensePlateRecognition",
+      ];
 
-      console.log("📄 XML recibido:", req.body);
-
-      // Parsear el XML
-      const parser = new xml2js.Parser({
-        explicitArray: false,
-        ignoreAttrs: false,
-        trim: true,
-      });
-
-      let parsedXML;
-      try {
-        parsedXML = await parser.parseStringPromise(req.body);
+      if (!eventType || !validVehicleEvents.includes(eventType)) {
         console.log(
-          "✅ XML parseado exitosamente:",
-          JSON.stringify(parsedXML, null, 2)
+          `🚫 IGNORADO: Evento no es de detección de placas (${eventType})`
         );
-      } catch (xmlError) {
-        console.log("❌ ERROR parseando XML:", xmlError.message);
-        return res.status(config.httpCodes.BAD_REQUEST).json({
-          success: false,
-          message: "Invalid XML format",
-        });
+        console.log(`   ℹ️  Eventos válidos: ${validVehicleEvents.join(", ")}`);
+
+        // Respuesta exitosa para la cámara (para que no reintente)
+        const responseXML = `<?xml version="1.0" encoding="UTF-8"?>
+<ResponseStatus>
+  <requestURL>${req.url}</requestURL>
+  <statusCode>1</statusCode>
+  <statusString>OK</statusString>
+  <subStatusCode>Event ignored - not vehicle detection</subStatusCode>
+</ResponseStatus>`;
+
+        res.set("Content-Type", "application/xml");
+        return res.status(config.httpCodes.OK).send(responseXML);
       }
 
-      // Extraer datos del XML parseado
-      const alarmEvent =
-        parsedXML.AlarmEvent || parsedXML.EventNotificationAlert;
-      if (!alarmEvent) {
-        console.log("❌ RECHAZADO: No se encontró AlarmEvent en el XML");
-        return res.status(config.httpCodes.BAD_REQUEST).json({
-          success: false,
-          message: "Invalid XML: AlarmEvent not found",
-        });
-      }
-
-      const eventType = alarmEvent.eventType;
-      const plateNumber = alarmEvent.plateNumber || alarmEvent.licensePlate;
-      const channelID = alarmEvent.channelID;
-      const dateTime = alarmEvent.dateTime;
-      const eventState = alarmEvent.eventState;
-
-      console.log("📊 Datos extraídos del XML:", {
-        eventType,
-        plateNumber,
-        channelID,
-        dateTime,
-        eventState,
-      });
-
-      // VALIDACIÓN ESTRICTA: Rechazar peticiones inválidas
+      // VALIDACIÓN ESTRICTA: Solo validar placa para eventos de detección válidos
       if (!plateNumber || plateNumber.trim() === "") {
-        console.log("❌ RECHAZADO: Sin plateNumber en XML");
-        return res.status(config.httpCodes.BAD_REQUEST).json({
-          success: false,
-          message: "Invalid notification: plateNumber is required in XML",
-        });
-      }
-
-      if (!eventType || eventType !== "vehicleDetection") {
         console.log(
-          `❌ RECHAZADO: eventType inválido (${eventType}), esperado: vehicleDetection`
+          `❌ RECHAZADO: Sin plateNumber para evento de detección de placas (${dataSource})`
         );
-        return res.status(config.httpCodes.BAD_REQUEST).json({
-          success: false,
-          message: "Invalid notification: eventType must be vehicleDetection",
-        });
+
+        const errorXML = `<?xml version="1.0" encoding="UTF-8"?>
+<ResponseStatus>
+  <requestURL>${req.url}</requestURL>
+  <statusCode>2</statusCode>
+  <statusString>ERROR</statusString>
+  <subStatusCode>plateNumber is required for vehicle detection events</subStatusCode>
+</ResponseStatus>`;
+
+        res.set("Content-Type", "application/xml");
+        return res.status(config.httpCodes.BAD_REQUEST).send(errorXML);
       }
 
-      // Solo procesar eventos activos
-      if (eventState && eventState !== "active") {
+      // Solo procesar eventos activos (para XML)
+      if (dataSource === "xml" && eventState && eventState !== "active") {
         console.log(`❌ RECHAZADO: eventState no es active (${eventState})`);
-        return res.status(config.httpCodes.BAD_REQUEST).json({
-          success: false,
-          message: "Invalid notification: eventState must be active",
-        });
+
+        const errorXML = `<?xml version="1.0" encoding="UTF-8"?>
+<ResponseStatus>
+  <requestURL>${req.url}</requestURL>
+  <statusCode>2</statusCode>
+  <statusString>ERROR</statusString>
+  <subStatusCode>eventState must be active</subStatusCode>
+</ResponseStatus>`;
+
+        res.set("Content-Type", "application/xml");
+        return res.status(config.httpCodes.BAD_REQUEST).send(errorXML);
       }
 
       console.log(
-        `✅ VALIDACIÓN EXITOSA: Placa=${plateNumber}, Evento=${eventType}, Estado=${eventState}`
+        `✅ VALIDACIÓN EXITOSA: Placa=${plateNumber}, Evento=${eventType}, Fuente=${dataSource}`
       );
 
       // Procesar la detección de vehículo
@@ -150,7 +221,8 @@ class CameraController {
         eventState,
         sourceIP,
         headers: req.headers,
-        xmlData: alarmEvent,
+        dataSource,
+        queryData: dataSource === "query" ? req.query : null,
       });
 
       if (result.success) {
@@ -164,13 +236,11 @@ class CameraController {
 
         // Emitir notificación por WebSocket si hay un auto creado
         if (result.data && global.io) {
-          global.io
-            .to(`playa-${result.data.id_playa}`)
-            .emit("vehicle-detected", {
-              type: "vehicle-entry",
-              vehicle: result.data,
-              timestamp: new Date().toISOString(),
-            });
+          global.io.to(`playa-${result.data.id_playa}`).emit("vehicle-detected", {
+            type: "vehicle-entry",
+            vehicle: result.data,
+            timestamp: new Date().toISOString(),
+          });
         }
 
         // Respuesta exitosa para la cámara (XML response)
