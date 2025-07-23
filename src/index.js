@@ -85,17 +85,17 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.text({ type: "application/xml" }));
+app.use(express.text({ type: "text/xml" }));
 app.use(express.text({ type: "text/plain" }));
 // Middleware para manejar imágenes JPEG de cámaras Hikvision
 app.use(express.raw({ type: "image/jpeg", limit: "10mb" }));
 app.use(express.raw({ type: "image/png", limit: "10mb" }));
 app.use(express.raw({ type: "application/octet-stream", limit: "10mb" }));
 
-// Middleware de logging simplificado (solo errores importantes)
+// Middleware simple para detectar peticiones de cámaras
 app.use((req, res, next) => {
-  // Solo loggear endpoints críticos o errores
-  if (req.url.includes('/camera/vehicle-detection') && process.env.NODE_ENV === 'development') {
-    console.log(`${req.method} ${req.url} - IP: ${req.ip || req.connection.remoteAddress}`);
+  if (req.url.includes('/camera') || req.url.includes('/vehicle-detection') || req.url.includes('/ISAPI')) {
+    console.log("📷 Petición cámara:", req.method, req.url, "IP:", req.ip || req.connection.remoteAddress);
   }
   next();
 });
@@ -164,6 +164,30 @@ app.get(
 app.post("/camera/vehicle-detection", CameraController.receiveVehicleDetection);
 app.post("/vehicle-detection", CameraController.receiveVehicleDetection);
 
+// Endpoint de prueba para cámaras - PARA TESTING
+app.all("/camera/test", (req, res) => {
+  console.log("🧪 ===== ENDPOINT DE PRUEBA CÁMARA =====");
+  console.log("🧪 Method:", req.method);
+  console.log("🧪 Headers:", JSON.stringify(req.headers, null, 2));
+  console.log("🧪 Query:", JSON.stringify(req.query, null, 2));
+  console.log("🧪 Body:", req.body);
+  console.log("🧪 IP:", req.ip || req.connection.remoteAddress);
+  console.log("🧪 =====================================");
+  
+  res.json({
+    success: true,
+    message: "Test endpoint funcionando correctamente",
+    received: {
+      method: req.method,
+      headers: req.headers,
+      query: req.query,
+      body: req.body,
+      ip: req.ip || req.connection.remoteAddress,
+      timestamp: new Date().toISOString()
+    }
+  });
+});
+
 // Debug endpoint para verificar headers
 app.get("/debug-headers", (req, res) => {
   res.json({
@@ -219,9 +243,7 @@ const server = httpServer.listen(config.port, config.host, () => {
   console.log("🚀 ================================");
   console.log(`🌐 Server: http://${config.host}:${config.port}`);
   console.log(`📊 Environment: ${config.nodeEnv}`);
-  console.log(`🕒 Timezone: ${config.timezone}`);
-  console.log(`📱 API Version: 2.0.0`);
-  console.log(`📡 WebSocket: Enabled for real-time notifications`);
+  console.log("📷 Endpoints de cámaras configurados ✅");
   console.log("🚀 ================================");
 
   // Inicializar servicios de cron

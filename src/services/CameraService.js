@@ -8,13 +8,38 @@ const moment = require('moment-timezone');
 class CameraService {
   static async getPlatesFromCamera(idPlaya) {
     try {
+      console.log("📷 Obteniendo placas para playa:", idPlaya);
+      
+      // Obtener datos de la playa incluyendo configuración de cámara
+      const playa = await Playa.findById(idPlaya);
+      if (!playa) {
+        console.log("📷 ERROR: Playa no encontrada:", idPlaya);
+        return {
+          success: false,
+          data: [],
+          message: 'Playa not found'
+        };
+      }
+
+      // Verificar si la playa tiene configuración de cámara
+      if (!playa.cam_url || !playa.cam_user || !playa.cam_password) {
+        console.log("📷 ERROR: Playa sin configuración de cámara:", playa.nombre);
+        return {
+          success: false,
+          data: [],
+          message: 'Camera not configured for this playa'
+        };
+      }
+
+      console.log("📷 Conectando a cámara de playa:", playa.nombre);
+
       const response = await axios({
         method: 'GET',
-        url: config.camera.url,
-        timeout: config.camera.timeout,
+        url: playa.cam_url,
+        timeout: config.camera.timeout || 5000,
         headers: {
           'Content-Type': 'text/plain',
-          'Authorization': 'Basic ' + Buffer.from(config.camera.user + ':' + config.camera.password).toString('base64')
+          'Authorization': 'Basic ' + Buffer.from(playa.cam_user + ':' + playa.cam_password).toString('base64')
         },
         data: '<?xml version="1.0" encoding="UTF-8"?>\r\n<Root></Root>\r\n'
       });
@@ -24,13 +49,14 @@ class CameraService {
         const newPlates = await this.filterNewPlates(parsedPlates);
         await Auto.insertBulk(newPlates, idPlaya);
 
+        console.log("📷 ✅ Placas obtenidas:", newPlates.length);
         return {
           success: true,
           data: newPlates,
           message: 'Plates retrieved successfully'
         };
       } catch (parseError) {
-        console.error("❌ Error parsing camera data:", parseError.message);
+        console.error("📷 Error parsing camera data:", parseError.message);
         return {
           success: false,
           data: [],
@@ -38,7 +64,7 @@ class CameraService {
         };
       }
     } catch (error) {
-      console.error("❌ Error during camera request:", error.message);
+      console.error("📷 Error during camera request:", error.message);
       console.log("📷 Cámara no disponible, devolviendo array vacío");
       return {
         success: false,
@@ -75,18 +101,24 @@ class CameraService {
   static async processVehicleDetection(detectionData) {
     try {
       const { licensePlate, sourceIP } = detectionData;
+      console.log("� ProcEesando:", licensePlate, "desde IP:", sourceIP);
 
       // Identificar la playa basándose en la IP de la cámara
       const playa = await this.findPlayaByCamera(sourceIP);
+      
       if (!playa) {
+        console.log("📷 ERROR: No se encontró playa para IP:", sourceIP);
         return {
           success: false,
           message: `No se encontró playa asociada a la IP: ${sourceIP}`
         };
       }
 
+      console.log("📷 Playa encontrada:", playa.nombre);
+
       // Verificar si la playa está abierta
       if (playa.estado !== 'abierto') {
+        console.log("📷 ERROR: Playa cerrada");
         return {
           success: false,
           message: `Playa ${playa.nombre} está cerrada`
@@ -104,6 +136,7 @@ class CameraService {
       };
 
       const newAuto = await Auto.create(autoData);
+      console.log("📷 ✅ Auto creado:", newAuto.placa, "en playa", playa.nombre);
 
       return {
         success: true,
@@ -112,7 +145,7 @@ class CameraService {
       };
 
     } catch (error) {
-      console.error('Error procesando detección de vehículo:', error);
+      console.error('📷 ERROR procesando detección:', error.message);
       return {
         success: false,
         message: `Error interno: ${error.message}`
@@ -122,11 +155,12 @@ class CameraService {
 
   static async findPlayaByCamera(sourceIP) {
     try {
+      console.log("� BuscEando playa por IP:", sourceIP);
       // Buscar playa por IP de cámara (incluye fallback interno)
       const playa = await Playa.findByCameraIP(sourceIP);
       return playa;
     } catch (error) {
-      console.error('Error finding playa by camera:', error);
+      console.error('📷 ERROR finding playa by camera:', error);
       return null;
     }
   }
