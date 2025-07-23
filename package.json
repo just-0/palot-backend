@@ -23,6 +23,7 @@
     "moment-timezone": "^0.5.45",
     "mysql2": "^3.14.2",
     "node-cron": "^4.2.1",
+    "socket.io": "^4.8.1",
     "xml2js": "^0.6.2"
   },
   "devDependencies": {

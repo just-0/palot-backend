@@ -1,5 +1,7 @@
 const express = require("express");
 const cors = require("cors");
+const { createServer } = require("http");
+const { Server } = require("socket.io");
 require("dotenv").config();
 
 // Import configurations and middleware
@@ -11,8 +13,54 @@ const CronService = require("./services/CronService");
 // Import routes
 const routes = require("./routes");
 
-// Create Express app
+// Create Express app and HTTP server
 const app = express();
+const httpServer = createServer(app);
+
+// Configure Socket.IO with CORS
+const io = new Server(httpServer, {
+  cors: {
+    origin: ["http://localhost:4200", "http://127.0.0.1:4200"],
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
+
+// Make io globally available for camera notifications
+global.io = io;
+
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log(`📡 Cliente WebSocket conectado: ${socket.id}`);
+
+  // Handle joining playa room
+  socket.on('join-playa', (playaId) => {
+    const roomName = `playa-${playaId}`;
+    socket.join(roomName);
+    console.log(`🏢 Cliente ${socket.id} se unió a la sala: ${roomName}`);
+    
+    // Confirm room join
+    socket.emit('joined-playa', { playaId, roomName });
+  });
+
+  // Handle leaving playa room
+  socket.on('leave-playa', (playaId) => {
+    const roomName = `playa-${playaId}`;
+    socket.leave(roomName);
+    console.log(`🚪 Cliente ${socket.id} salió de la sala: ${roomName}`);
+  });
+
+  // Handle disconnection
+  socket.on('disconnect', (reason) => {
+    console.log(`📡 Cliente WebSocket desconectado: ${socket.id} - Razón: ${reason}`);
+  });
+
+  // Handle connection errors
+  socket.on('error', (error) => {
+    console.error(`❌ Error en WebSocket ${socket.id}:`, error);
+  });
+});
 
 // Middleware - CORS configuration
 app.use(
@@ -164,8 +212,8 @@ app.use("*", (req, res) => {
   });
 });
 
-// Start server
-const server = app.listen(config.port, config.host, () => {
+// Start server with Socket.IO support
+const server = httpServer.listen(config.port, config.host, () => {
   console.log("🚀 ================================");
   console.log("🚀 PALOT BACKEND SERVER STARTED");
   console.log("🚀 ================================");
@@ -173,6 +221,7 @@ const server = app.listen(config.port, config.host, () => {
   console.log(`📊 Environment: ${config.nodeEnv}`);
   console.log(`🕒 Timezone: ${config.timezone}`);
   console.log(`📱 API Version: 2.0.0`);
+  console.log(`📡 WebSocket: Enabled for real-time notifications`);
   console.log("🚀 ================================");
 
   // Inicializar servicios de cron
