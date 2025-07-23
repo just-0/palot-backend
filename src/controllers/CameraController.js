@@ -32,6 +32,7 @@ class CameraController {
   static async receiveVehicleDetection(req, res) {
     try {
       // Obtener IP real de la cámara considerando proxies y load balancers
+      console.log("SI LLEGO ALGO")
       const sourceIP =
         req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
         req.headers["x-real-ip"] ||
