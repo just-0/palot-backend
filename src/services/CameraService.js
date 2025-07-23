@@ -66,14 +66,17 @@ class CameraService {
     }
   }
 
+  /**
+   * Procesa una detección de vehículo desde cámara Hikvision
+   * Identifica la playa por IP, valida que esté abierta y crea el registro del auto
+   * @param {Object} detectionData - Datos de la detección (licensePlate, sourceIP, etc.)
+   * @returns {Object} - Resultado con success, data y message
+   */
   static async processVehicleDetection(detectionData) {
     try {
-      const { licensePlate, sourceIP, dateTime, confidenceLevel } = detectionData;
+      const { licensePlate, sourceIP } = detectionData;
 
-      console.log(`🚗 Procesando detección de placa: ${licensePlate}`);
-      console.log(`📍 IP origen: ${sourceIP}`);
-
-      // 1. Identificar la playa basándose en la IP de la cámara
+      // Identificar la playa basándose en la IP de la cámara
       const playa = await this.findPlayaByCamera(sourceIP);
       if (!playa) {
         return {
@@ -82,18 +85,15 @@ class CameraService {
         };
       }
 
-      console.log(`🏖️ Playa identificada: ${playa.nombre} (ID: ${playa.id_playa})`);
-
-      // 2. Verificar si la playa está abierta
+      // Verificar si la playa está abierta
       if (playa.estado !== 'abierto') {
-        console.log(`⚠️ Playa ${playa.nombre} está cerrada, ignorando detección`);
         return {
           success: false,
           message: `Playa ${playa.nombre} está cerrada`
         };
       }
 
-      // 3. Crear el registro del auto - SIEMPRE usar fecha/hora del sistema
+      // Crear el registro del auto usando fecha/hora del sistema
       const horaEntrada = moment().tz(config.timezone).toDate();
 
       const autoData = {
@@ -105,8 +105,6 @@ class CameraService {
 
       const newAuto = await Auto.create(autoData);
 
-      console.log(`✅ Auto creado exitosamente: ID ${newAuto.id_auto}, Placa: ${newAuto.placa}`);
-
       return {
         success: true,
         data: newAuto,
@@ -114,7 +112,7 @@ class CameraService {
       };
 
     } catch (error) {
-      console.error('❌ Error procesando detección de vehículo:', error);
+      console.error('Error procesando detección de vehículo:', error);
       return {
         success: false,
         message: `Error interno: ${error.message}`

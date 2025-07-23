@@ -66,12 +66,16 @@ class Playa {
     }
   }
 
+  /**
+   * Busca una playa por la IP de su cámara configurada
+   * Intenta múltiples patrones de búsqueda en cam_url
+   * Si no encuentra una específica, usa la primera playa abierta como fallback
+   * @param {string} sourceIP - IP de origen de la cámara
+   * @returns {Object|null} - Datos de la playa encontrada o null
+   */
   static async findByCameraIP(sourceIP) {
     try {
-      console.log(`🔍 Buscando playa para IP de cámara: ${sourceIP}`);
-      
       // Buscar playa que tenga configurada la URL de cámara con esta IP
-      // Probamos diferentes formatos de búsqueda
       let query = "SELECT * FROM Playa WHERE cam_url LIKE ? OR cam_url LIKE ? OR cam_url LIKE ?";
       let searchPatterns = [
         `%${sourceIP}%`,           // IP en cualquier parte de la URL
@@ -82,18 +86,14 @@ class Playa {
       let results = await db.query(query, searchPatterns);
       
       if (results.length > 0) {
-        console.log(`✅ Playa encontrada por cam_url: ${results[0].nombre} (ID: ${results[0].id_playa})`);
-        console.log(`📊 Datos completos de la playa:`, JSON.stringify(results[0], null, 2));
         return results[0];
       }
 
       // Si no se encuentra por cam_url, buscar cualquier playa abierta como fallback
-      console.log(`⚠️ No se encontró playa específica para IP ${sourceIP}`);
       query = "SELECT * FROM Playa WHERE estado = 'abierto' ORDER BY id_playa ASC LIMIT 1";
       results = await db.query(query);
       
       if (results.length > 0) {
-        console.log(`📍 Usando playa por defecto: ${results[0].nombre} (ID: ${results[0].id_playa})`);
         return results[0];
       }
 

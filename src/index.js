@@ -43,17 +43,12 @@ app.use(express.raw({ type: "image/jpeg", limit: "10mb" }));
 app.use(express.raw({ type: "image/png", limit: "10mb" }));
 app.use(express.raw({ type: "application/octet-stream", limit: "10mb" }));
 
-// Middleware de logging para capturar TODAS las peticiones
+// Middleware de logging simplificado (solo errores importantes)
 app.use((req, res, next) => {
-  const timestamp = new Date().toISOString();
-  console.log(`\n🌐 [${timestamp}] ${req.method} ${req.url}`);
-  console.log(`📍 IP: ${req.ip || req.connection.remoteAddress}`);
-  console.log(`🔍 Query: ${JSON.stringify(req.query)}`);
-  console.log(`📋 Headers: ${JSON.stringify(req.headers, null, 2)}`);
-  if (Object.keys(req.body || {}).length > 0) {
-    console.log(`📦 Body: ${JSON.stringify(req.body)}`);
+  // Solo loggear endpoints críticos o errores
+  if (req.url.includes('/camera/vehicle-detection') && process.env.NODE_ENV === 'development') {
+    console.log(`${req.method} ${req.url} - IP: ${req.ip || req.connection.remoteAddress}`);
   }
-  console.log(`---`);
   next();
 });
 

@@ -20,9 +20,18 @@ class CameraController {
     }
   }
 
+  /**
+   * Procesa notificaciones de cámaras Hikvision para detección de placas
+   * Soporta dos formatos:
+   * 1. Query params (detección real de placas): ?licensePlate=ABC123&eventType=vehicleDetection
+   * 2. XML body (eventos de movimiento): <EventNotificationAlert><eventType>VMD</eventType>...
+   * 
+   * Solo procesa eventos de detección de placas, ignora eventos de movimiento (VMD)
+   * Crea automáticamente registros de Auto con estado 1 (NO TICKET)
+   */
   static async receiveVehicleDetection(req, res) {
     try {
-      // Obtener IP real considerando proxies
+      // Obtener IP real de la cámara considerando proxies y load balancers
       const sourceIP =
         req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
         req.headers["x-real-ip"] ||
@@ -30,59 +39,32 @@ class CameraController {
         req.socket.remoteAddress ||
         req.ip;
 
-      console.log("🚨 ===== NOTIFICACIÓN CÁMARA HIKVISION =====");
-      console.log("📍 IP Real de Cámara:", sourceIP);
-      console.log("🔧 Método:", req.method);
-      console.log("🌐 URL:", req.url);
-      console.log("📋 Content-Type:", req.headers["content-type"]);
-      console.log("📦 Query Params:", JSON.stringify(req.query, null, 2));
-      console.log("🚨 ============================================");
-
       let eventType, plateNumber, channelID, dateTime, eventState;
       let dataSource = "unknown";
 
-      // DETECTAR FORMATO: Query Params vs XML
+      // Detectar formato de datos: Query Params (detección real) vs XML (eventos varios)
       if (req.query && Object.keys(req.query).length > 0 && req.query.licensePlate) {
-        // FORMATO 1: Datos en Query Params (detección de placas real)
-        console.log("📋 FORMATO: Query Params (detección de placas)");
-
+        // Formato 1: Datos en Query Params - Detección real de placas
         eventType = req.query.eventType;
         plateNumber = req.query.licensePlate || req.query.plateNumber;
         channelID = req.query.channelID;
         dateTime = req.query.dateTime;
-        eventState = "active"; // Asumir activo para query params
+        eventState = "active";
         dataSource = "query";
 
-        console.log("📊 Datos extraídos de Query Params:", {
-          eventType,
-          plateNumber,
-          channelID,
-          dateTime,
-          eventState,
-          country: req.query.country,
-          lane: req.query.lane,
-          direction: req.query.direction,
-          confidenceLevel: req.query.confidenceLevel,
-        });
       } else if (
         req.headers["content-type"]?.includes("application/xml") ||
         req.headers["content-type"]?.includes("text/xml")
       ) {
-        // FORMATO 2: Datos en XML (eventos de movimiento, etc.)
-        console.log("📋 FORMATO: XML Body");
-
-        // Validar que haya contenido en el body
+        // Formato 2: Datos en XML - Eventos varios (movimiento, etc.)
         if (!req.body || req.body.trim() === "") {
-          console.log("❌ RECHAZADO: Body XML vacío");
           return res.status(config.httpCodes.BAD_REQUEST).json({
             success: false,
             message: "Invalid notification: XML body is required",
           });
         }
 
-        console.log("📄 XML recibido:", req.body);
-
-        // Parsear el XML
+        // Parsear XML
         const parser = new xml2js.Parser({
           explicitArray: false,
           ignoreAttrs: false,
@@ -92,25 +74,17 @@ class CameraController {
         let parsedXML;
         try {
           parsedXML = await parser.parseStringPromise(req.body);
-          console.log(
-            "✅ XML parseado exitosamente:",
-            JSON.stringify(parsedXML, null, 2)
-          );
         } catch (xmlError) {
-          console.log("❌ ERROR parseando XML:", xmlError.message);
           return res.status(config.httpCodes.BAD_REQUEST).json({
             success: false,
             message: "Invalid XML format",
           });
         }
 
-        // Extraer datos del XML parseado
+        // Extraer datos del XML
         const alarmEvent =
           parsedXML.AlarmEvent || parsedXML.EventNotificationAlert;
         if (!alarmEvent) {
-          console.log(
-            "❌ RECHAZADO: No se encontró AlarmEvent o EventNotificationAlert en el XML"
-          );
           return res.status(config.httpCodes.BAD_REQUEST).json({
             success: false,
             message: "Invalid XML: AlarmEvent or EventNotificationAlert not found",
@@ -127,27 +101,15 @@ class CameraController {
         eventState = alarmEvent.eventState;
         dataSource = "xml";
 
-        console.log("📊 Datos extraídos del XML:", {
-          eventType,
-          plateNumber,
-          channelID,
-          dateTime,
-          eventState,
-          xmlType: parsedXML.AlarmEvent ? "AlarmEvent" : "EventNotificationAlert",
-        });
       } else {
-        // FORMATO DESCONOCIDO
-        console.log("❌ RECHAZADO: Formato no reconocido");
-        console.log("   Content-Type:", req.headers["content-type"]);
-        console.log("   Query params:", Object.keys(req.query).length);
-
+        // Formato no reconocido
         return res.status(config.httpCodes.BAD_REQUEST).json({
           success: false,
           message: "Invalid format: expected query params with licensePlate or XML",
         });
       }
 
-      // FILTRO PRINCIPAL: Solo procesar eventos de detección de placas
+      // Filtrar solo eventos de detección de placas
       const validVehicleEvents = [
         "vehicleDetection",
         "ANPR", // Automatic Number Plate Recognition
@@ -156,12 +118,7 @@ class CameraController {
       ];
 
       if (!eventType || !validVehicleEvents.includes(eventType)) {
-        console.log(
-          `🚫 IGNORADO: Evento no es de detección de placas (${eventType})`
-        );
-        console.log(`   ℹ️  Eventos válidos: ${validVehicleEvents.join(", ")}`);
-
-        // Respuesta exitosa para la cámara (para que no reintente)
+        // Ignorar eventos que no son de detección de placas (ej: VMD)
         const responseXML = `<?xml version="1.0" encoding="UTF-8"?>
 <ResponseStatus>
   <requestURL>${req.url}</requestURL>
@@ -174,12 +131,8 @@ class CameraController {
         return res.status(config.httpCodes.OK).send(responseXML);
       }
 
-      // VALIDACIÓN ESTRICTA: Solo validar placa para eventos de detección válidos
+      // Validar que tenga placa para eventos de detección
       if (!plateNumber || plateNumber.trim() === "") {
-        console.log(
-          `❌ RECHAZADO: Sin plateNumber para evento de detección de placas (${dataSource})`
-        );
-
         const errorXML = `<?xml version="1.0" encoding="UTF-8"?>
 <ResponseStatus>
   <requestURL>${req.url}</requestURL>
@@ -192,10 +145,8 @@ class CameraController {
         return res.status(config.httpCodes.BAD_REQUEST).send(errorXML);
       }
 
-      // Solo procesar eventos activos (para XML)
+      // Para XML, validar que el evento esté activo
       if (dataSource === "xml" && eventState && eventState !== "active") {
-        console.log(`❌ RECHAZADO: eventState no es active (${eventState})`);
-
         const errorXML = `<?xml version="1.0" encoding="UTF-8"?>
 <ResponseStatus>
   <requestURL>${req.url}</requestURL>
@@ -207,10 +158,6 @@ class CameraController {
         res.set("Content-Type", "application/xml");
         return res.status(config.httpCodes.BAD_REQUEST).send(errorXML);
       }
-
-      console.log(
-        `✅ VALIDACIÓN EXITOSA: Placa=${plateNumber}, Evento=${eventType}, Fuente=${dataSource}`
-      );
 
       // Procesar la detección de vehículo
       const result = await CameraService.processVehicleDetection({
@@ -226,15 +173,7 @@ class CameraController {
       });
 
       if (result.success) {
-        console.log("✅ VEHÍCULO REGISTRADO:", {
-          id: result.data.id_auto,
-          placa: result.data.placa,
-          playa: result.data.id_playa,
-          estado: result.data.state,
-          hora: result.data.hora_entrada,
-        });
-
-        // Emitir notificación por WebSocket si hay un auto creado
+        // Emitir notificación WebSocket para actualización en tiempo real
         if (result.data && global.io) {
           global.io.to(`playa-${result.data.id_playa}`).emit("vehicle-detected", {
             type: "vehicle-entry",
@@ -243,7 +182,7 @@ class CameraController {
           });
         }
 
-        // Respuesta exitosa para la cámara (XML response)
+        // Respuesta exitosa en formato XML para la cámara
         const responseXML = `<?xml version="1.0" encoding="UTF-8"?>
 <ResponseStatus>
   <requestURL>${req.url}</requestURL>
@@ -255,9 +194,7 @@ class CameraController {
         res.set("Content-Type", "application/xml");
         return res.status(config.httpCodes.OK).send(responseXML);
       } else {
-        console.log("⚠️ DETECCIÓN NO PROCESADA:", result.message);
-
-        // Respuesta de error en XML
+        // Respuesta de error en formato XML
         const errorXML = `<?xml version="1.0" encoding="UTF-8"?>
 <ResponseStatus>
   <requestURL>${req.url}</requestURL>
@@ -270,12 +207,9 @@ class CameraController {
         return res.status(config.httpCodes.BAD_REQUEST).send(errorXML);
       }
     } catch (error) {
-      console.error(
-        "❌ ERROR CRÍTICO procesando notificación de cámara:",
-        error
-      );
+      console.error("Error procesando notificación de cámara:", error);
 
-      // Respuesta de error para la cámara en XML
+      // Respuesta de error crítico en formato XML
       const errorXML = `<?xml version="1.0" encoding="UTF-8"?>
 <ResponseStatus>
   <requestURL>${req.url || "/camera/vehicle-detection"}</requestURL>
