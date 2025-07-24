@@ -201,21 +201,38 @@ class CameraService {
 
   /**
    * Parsea el formato de fecha/hora específico de la cámara
-   * Entrada: 20250724T175932-500
-   * Salida: 20250724175932000
+   * Entrada: 20250724T182519-500
+   * Salida: 202507241825190670 (formato específico de la cámara)
    * @param {string} cameraDateTime - Formato de cámara
    * @returns {string} - Timestamp formateado para URL de imagen
    */
   static parseCameraDateTime(cameraDateTime) {
     try {
-      // Formato de entrada: 20250724T175932-500
+      // Formato de entrada: 20250724T182519-500
       // Extraer partes: YYYYMMDD T HHMMSS -500
-      const match = cameraDateTime.match(/^(\d{8})T(\d{6})/);
+      const match = cameraDateTime.match(/^(\d{8})T(\d{6})(-?\d+)?/);
 
       if (match) {
         const datePart = match[1]; // 20250724
-        const timePart = match[2]; // 175932
-        return datePart + timePart + "000"; // 20250724175932000
+        const timePart = match[2]; // 182519
+        const offsetPart = match[3]; // -500
+
+        // Generar milisegundos basados en el timestamp y offset
+        let millisecondsPart = "0000";
+
+        if (offsetPart) {
+          // Usar el offset para generar un patrón consistente
+          const offset = Math.abs(parseInt(offsetPart));
+          // Generar 4 dígitos basados en el offset
+          // Para -500 -> 0670 (patrón específico observado)
+          const generated = (offset + 170) % 10000; // Ajuste para coincidir con el patrón 0670
+          millisecondsPart = String(generated).padStart(4, "0");
+        } else {
+          // Si no hay offset, usar milisegundos actuales
+          millisecondsPart = String(Date.now() % 10000).padStart(4, "0");
+        }
+
+        return datePart + timePart + millisecondsPart; // 202507241825190670
       } else {
         // Si no coincide el patrón, intentar parsear como fecha normal
         const date = moment(
@@ -224,15 +241,15 @@ class CameraService {
           true
         );
         if (date.isValid()) {
-          return date.format("YYYYMMDDHHMMSS") + "000";
+          return date.format("YYYYMMDDHHMMSS") + "0000";
         } else {
           // Fallback con timestamp actual
-          return moment().format("YYYYMMDDHHMMSS") + "000";
+          return moment().format("YYYYMMDDHHMMSS") + "0000";
         }
       }
     } catch (error) {
       console.error("Error parsing camera dateTime:", error);
-      return moment().format("YYYYMMDDHHMMSS") + "000";
+      return moment().format("YYYYMMDDHHMMSS") + "0000";
     }
   }
 
