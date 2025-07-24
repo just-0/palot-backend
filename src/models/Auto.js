@@ -68,11 +68,12 @@ class Auto {
         .format(process.env.DATE_FORMAT || "YYYY-MM-DD HH:mm:ss");
 
       const query =
-        "INSERT INTO Auto (id_playa, placa, hora_entrada, state) VALUES (?, ?, ?, ?)";
+        "INSERT INTO Auto (id_playa, placa, hora_entrada, image, state) VALUES (?, ?, ?, ?, ?)";
       const result = await db.query(query, [
         data.id_playa,
         data.placa,
         fechaEntrada,
+        data.image || null,
         data.state,
       ]);
 
@@ -97,7 +98,7 @@ class Auto {
       ]);
 
       const query =
-        "INSERT INTO Auto (id_playa, placa, hora_entrada, img) VALUES ?";
+        "INSERT INTO Auto (id_playa, placa, hora_entrada, image) VALUES ?";
       await db.query(query, [values]);
     } catch (error) {
       throw new Error(`Error inserting bulk autos: ${error.message}`);
