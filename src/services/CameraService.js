@@ -127,14 +127,8 @@ class CameraService {
       // Usar la fecha/hora de la cámara, no del sistema
       let horaEntrada;
       if (dateTime) {
-        // Usar el timestamp de la cámara
-        const cameraDate = moment(dateTime);
-        if (cameraDate.isValid()) {
-          horaEntrada = cameraDate.toDate();
-        } else {
-          // Fallback al sistema solo si el timestamp de la cámara es inválido
-          horaEntrada = moment().tz(config.timezone).toDate();
-        }
+        // Parsear el formato específico de la cámara
+        horaEntrada = this.parseCameraDateTimeToDate(dateTime);
       } else {
         // Fallback al sistema solo si no hay dateTime de la cámara
         horaEntrada = moment().tz(config.timezone).toDate();
@@ -179,7 +173,7 @@ class CameraService {
    * Genera la URL de la imagen de la placa basada en la IP de la cámara y timestamp
    * Formato: http://IP:80/doc/ui/images/plate/YYYYMMDDHHMMSS000.jpg
    * @param {string} sourceIP - IP de la cámara
-   * @param {string} dateTime - Timestamp del evento (formato ISO o similar)
+   * @param {string} dateTime - Timestamp del evento (formato de cámara: 20250724T175932-500)
    * @returns {string} - URL completa de la imagen
    */
   static generatePlateImageUrl(sourceIP, dateTime) {
@@ -187,14 +181,8 @@ class CameraService {
       let timestamp;
 
       if (dateTime) {
-        // Convertir el dateTime a formato YYYYMMDDHHMMSS000
-        const date = moment(dateTime);
-        if (date.isValid()) {
-          timestamp = date.format("YYYYMMDDHHMMSS") + "000";
-        } else {
-          // Si no se puede parsear, usar timestamp actual
-          timestamp = moment().format("YYYYMMDDHHMMSS") + "000";
-        }
+        // Parsear formato específico de cámara: 20250724T175932-500
+        timestamp = this.parseCameraDateTime(dateTime);
       } else {
         // Si no hay dateTime, usar timestamp actual
         timestamp = moment().format("YYYYMMDDHHMMSS") + "000";
@@ -208,6 +196,94 @@ class CameraService {
       // Fallback con timestamp actual
       const timestamp = moment().format("YYYYMMDDHHMMSS") + "000";
       return `http://${sourceIP}:80/doc/ui/images/plate/${timestamp}.jpg`;
+    }
+  }
+
+  /**
+   * Parsea el formato de fecha/hora específico de la cámara
+   * Entrada: 20250724T175932-500
+   * Salida: 20250724175932000
+   * @param {string} cameraDateTime - Formato de cámara
+   * @returns {string} - Timestamp formateado para URL de imagen
+   */
+  static parseCameraDateTime(cameraDateTime) {
+    try {
+      // Formato de entrada: 20250724T175932-500
+      // Extraer partes: YYYYMMDD T HHMMSS -500
+      const match = cameraDateTime.match(/^(\d{8})T(\d{6})/);
+
+      if (match) {
+        const datePart = match[1]; // 20250724
+        const timePart = match[2]; // 175932
+        return datePart + timePart + "000"; // 20250724175932000
+      } else {
+        // Si no coincide el patrón, intentar parsear como fecha normal
+        const date = moment(
+          cameraDateTime,
+          ["YYYYMMDD[T]HHmmss", "YYYY-MM-DD[T]HH:mm:ss", moment.ISO_8601],
+          true
+        );
+        if (date.isValid()) {
+          return date.format("YYYYMMDDHHMMSS") + "000";
+        } else {
+          // Fallback con timestamp actual
+          return moment().format("YYYYMMDDHHMMSS") + "000";
+        }
+      }
+    } catch (error) {
+      console.error("Error parsing camera dateTime:", error);
+      return moment().format("YYYYMMDDHHMMSS") + "000";
+    }
+  }
+
+  /**
+   * Parsea el formato de fecha/hora específico de la cámara y lo convierte a Date
+   * Entrada: 20250724T175932-500
+   * Salida: Date object
+   * @param {string} cameraDateTime - Formato de cámara
+   * @returns {Date} - Objeto Date
+   */
+  static parseCameraDateTimeToDate(cameraDateTime) {
+    try {
+      // Formato de entrada: 20250724T175932-500
+      // Extraer partes: YYYYMMDD T HHMMSS -500
+      const match = cameraDateTime.match(/^(\d{8})T(\d{6})/);
+
+      if (match) {
+        const datePart = match[1]; // 20250724
+        const timePart = match[2]; // 175932
+
+        // Convertir a formato ISO: YYYY-MM-DDTHH:mm:ss
+        const year = datePart.substring(0, 4);
+        const month = datePart.substring(4, 6);
+        const day = datePart.substring(6, 8);
+        const hour = timePart.substring(0, 2);
+        const minute = timePart.substring(2, 4);
+        const second = timePart.substring(4, 6);
+
+        const isoString = `${year}-${month}-${day}T${hour}:${minute}:${second}`;
+        const date = moment(isoString, "YYYY-MM-DDTHH:mm:ss", true);
+
+        if (date.isValid()) {
+          return date.toDate();
+        }
+      }
+
+      // Fallback: intentar parsear como fecha normal
+      const date = moment(
+        cameraDateTime,
+        ["YYYYMMDD[T]HHmmss", "YYYY-MM-DD[T]HH:mm:ss", moment.ISO_8601],
+        true
+      );
+      if (date.isValid()) {
+        return date.toDate();
+      } else {
+        // Último fallback: usar fecha actual del sistema
+        return moment().tz(config.timezone).toDate();
+      }
+    } catch (error) {
+      console.error("Error parsing camera dateTime to Date:", error);
+      return moment().tz(config.timezone).toDate();
     }
   }
 }
