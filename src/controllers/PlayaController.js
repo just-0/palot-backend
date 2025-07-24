@@ -85,14 +85,30 @@ class PlayaController {
   // Crear nueva playa (solo para admin)
   static async createPlaya(req, res) {
     try {
-      const { nombre_admin, nombre, direccion, tarifaAuto, tarifaMoto, tolerancia, facturacion, cam_url, cam_user, cam_password } =
-        req.body;
+      const {
+        nombre_admin,
+        nombre,
+        direccion,
+        tarifaAuto,
+        tarifaMoto,
+        tolerancia,
+        facturacion,
+        cam_url,
+        cam_user,
+        cam_password,
+      } = req.body;
 
       // Validar datos requeridos
-      if (!nombre_admin || !nombre || tolerancia === undefined || tolerancia === null) {
+      if (
+        !nombre_admin ||
+        !nombre ||
+        tolerancia === undefined ||
+        tolerancia === null
+      ) {
         return res.status(config.httpCodes.BAD_REQUEST).json({
           success: false,
-          message: "Nombre del admin, nombre de la playa y tolerancia son requeridos",
+          message:
+            "Nombre del admin, nombre de la playa y tolerancia son requeridos",
         });
       }
 
@@ -160,7 +176,17 @@ class PlayaController {
   static async updatePlaya(req, res) {
     try {
       const { id } = req.params;
-      const { nombre, direccion, tarifaAuto, tarifaMoto, tolerancia, facturacion, cam_url, cam_user, cam_password } = req.body;
+      const {
+        nombre,
+        direccion,
+        tarifaAuto,
+        tarifaMoto,
+        tolerancia,
+        facturacion,
+        cam_url,
+        cam_user,
+        cam_password,
+      } = req.body;
 
       // Validar tolerancia si se proporciona
       let toleranciaInt = undefined;
@@ -169,7 +195,8 @@ class PlayaController {
         if (isNaN(toleranciaInt) || toleranciaInt < 0) {
           return res.status(config.httpCodes.BAD_REQUEST).json({
             success: false,
-            message: "La tolerancia debe ser un número entero mayor o igual a 0",
+            message:
+              "La tolerancia debe ser un número entero mayor o igual a 0",
           });
         }
       }
@@ -214,12 +241,12 @@ class PlayaController {
         // 1. Eliminar boletas relacionadas con autos de esta playa
         const autos = await tx.auto.findMany({
           where: { id_playa: playaId },
-          select: { id_auto: true }
+          select: { id_auto: true },
         });
-        
+
         for (const auto of autos) {
           await tx.boleta.deleteMany({
-            where: { id_auto: auto.id_auto }
+            where: { id_auto: auto.id_auto },
           });
         }
 
@@ -227,29 +254,29 @@ class PlayaController {
         await tx.cliente.deleteMany({
           where: {
             Auto: {
-              id_playa: playaId
-            }
-          }
+              id_playa: playaId,
+            },
+          },
         });
 
         // 3. Eliminar autos de esta playa
         await tx.auto.deleteMany({
-          where: { id_playa: playaId }
+          where: { id_playa: playaId },
         });
 
         // 4. Eliminar motos de esta playa
         await tx.moto.deleteMany({
-          where: { id_playa: playaId }
+          where: { id_playa: playaId },
         });
 
         // 5. Eliminar relaciones de trabajo (empleados asignados)
         await tx.trabaja.deleteMany({
-          where: { id_playa: playaId }
+          where: { id_playa: playaId },
         });
 
         // 6. Finalmente eliminar la playa
         await tx.playa.delete({
-          where: { id_playa: playaId }
+          where: { id_playa: playaId },
         });
       });
 
@@ -294,21 +321,21 @@ class PlayaController {
 
       // Verificar que la playa existe
       const playa = await prisma.playa.findUnique({
-        where: { id_playa: parseInt(id) }
+        where: { id_playa: parseInt(id) },
       });
 
       if (!playa) {
         return res.status(config.httpCodes.NOT_FOUND).json({
           success: false,
-          message: "Playa no encontrada"
+          message: "Playa no encontrada",
         });
       }
 
       // Verificar que la playa no esté ya abierta
-      if (playa.estado === 'abierto') {
+      if (playa.estado === "abierto") {
         return res.status(config.httpCodes.BAD_REQUEST).json({
           success: false,
-          message: "La playa ya está abierta"
+          message: "La playa ya está abierta",
         });
       }
 
@@ -317,8 +344,8 @@ class PlayaController {
       const now = new Date();
 
       let updateData = {
-        estado: 'abierto',
-        usuarioAbrio: usuarioAbrio
+        estado: "abierto",
+        usuarioAbrio: usuarioAbrio,
       };
 
       // Si es primera apertura del día o reapertura, actualizar horaAbierto
@@ -335,21 +362,23 @@ class PlayaController {
       // Abrir la playa
       const playaAbierta = await prisma.playa.update({
         where: { id_playa: parseInt(id) },
-        data: updateData
+        data: updateData,
       });
 
-      const message = isReapertura ? "Playa reabierta exitosamente" : "Playa abierta exitosamente";
+      const message = isReapertura
+        ? "Playa reabierta exitosamente"
+        : "Playa abierta exitosamente";
 
       res.status(config.httpCodes.OK).json({
         success: true,
         message: message,
-        data: playaAbierta
+        data: playaAbierta,
       });
     } catch (error) {
       console.error("Abrir playa controller error:", error);
       res.status(config.httpCodes.INTERNAL_ERROR).json({
         success: false,
-        message: "Error al abrir la playa"
+        message: "Error al abrir la playa",
       });
     }
   }
@@ -362,21 +391,21 @@ class PlayaController {
 
       // Verificar que la playa existe
       const playa = await prisma.playa.findUnique({
-        where: { id_playa: parseInt(id) }
+        where: { id_playa: parseInt(id) },
       });
 
       if (!playa) {
         return res.status(config.httpCodes.NOT_FOUND).json({
           success: false,
-          message: "Playa no encontrada"
+          message: "Playa no encontrada",
         });
       }
 
       // Verificar que la playa esté abierta
-      if (playa.estado === 'cerrado') {
+      if (playa.estado === "cerrado") {
         return res.status(config.httpCodes.BAD_REQUEST).json({
           success: false,
-          message: "La playa ya está cerrada"
+          message: "La playa ya está cerrada",
         });
       }
 
@@ -384,22 +413,22 @@ class PlayaController {
       const playaCerrada = await prisma.playa.update({
         where: { id_playa: parseInt(id) },
         data: {
-          estado: 'cerrado',
+          estado: "cerrado",
           horaCerrado: new Date(),
-          usuarioCerro: usuarioCerro
-        }
+          usuarioCerro: usuarioCerro,
+        },
       });
 
       res.status(config.httpCodes.OK).json({
         success: true,
         message: "Playa cerrada exitosamente",
-        data: playaCerrada
+        data: playaCerrada,
       });
     } catch (error) {
       console.error("Cerrar playa controller error:", error);
       res.status(config.httpCodes.INTERNAL_ERROR).json({
         success: false,
-        message: "Error al cerrar la playa"
+        message: "Error al cerrar la playa",
       });
     }
   }

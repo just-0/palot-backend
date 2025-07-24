@@ -1,9 +1,9 @@
-const axios = require('axios');
-const Auto = require('../models/Auto');
-const Playa = require('../models/Playa');
-const utils = require('../utils/xmlParser');
-const config = require('../config/server');
-const moment = require('moment-timezone');
+const axios = require("axios");
+const Auto = require("../models/Auto");
+const Playa = require("../models/Playa");
+const utils = require("../utils/xmlParser");
+const config = require("../config/server");
+const moment = require("moment-timezone");
 
 class CameraService {
   static async getPlatesFromCamera(idPlaya) {
@@ -14,7 +14,7 @@ class CameraService {
         return {
           success: false,
           data: [],
-          message: 'Playa not found'
+          message: "Playa not found",
         };
       }
 
@@ -23,19 +23,23 @@ class CameraService {
         return {
           success: false,
           data: [],
-          message: 'Camera not configured for this playa'
+          message: "Camera not configured for this playa",
         };
       }
 
       const response = await axios({
-        method: 'GET',
+        method: "GET",
         url: playa.cam_url,
         timeout: config.camera.timeout || 5000,
         headers: {
-          'Content-Type': 'text/plain',
-          'Authorization': 'Basic ' + Buffer.from(playa.cam_user + ':' + playa.cam_password).toString('base64')
+          "Content-Type": "text/plain",
+          Authorization:
+            "Basic " +
+            Buffer.from(playa.cam_user + ":" + playa.cam_password).toString(
+              "base64"
+            ),
         },
-        data: '<?xml version="1.0" encoding="UTF-8"?>\r\n<Root></Root>\r\n'
+        data: '<?xml version="1.0" encoding="UTF-8"?>\r\n<Root></Root>\r\n',
       });
 
       try {
@@ -46,14 +50,14 @@ class CameraService {
         return {
           success: true,
           data: newPlates,
-          message: 'Plates retrieved successfully'
+          message: "Plates retrieved successfully",
         };
       } catch (parseError) {
         console.error("Error parsing camera data:", parseError.message);
         return {
           success: false,
           data: [],
-          message: 'Error parsing camera data'
+          message: "Error parsing camera data",
         };
       }
     } catch (error) {
@@ -61,7 +65,7 @@ class CameraService {
       return {
         success: false,
         data: [],
-        message: 'Camera not available'
+        message: "Camera not available",
       };
     }
   }
@@ -70,16 +74,21 @@ class CameraService {
     try {
       if (!plates || plates.length === 0) return [];
 
-      const plateNumbers = plates.map(plate => plate.plateNumber);
+      const plateNumbers = plates.map((plate) => plate.plateNumber);
       const existingPlates = await Auto.findExistingPlates(plateNumbers);
-      
-      const newPlates = plates.filter(plate => 
-        !existingPlates.has(`${plate.plateNumber}-${Auto.convertCaptureTimeToDate(plate.captureTime)}`)
+
+      const newPlates = plates.filter(
+        (plate) =>
+          !existingPlates.has(
+            `${plate.plateNumber}-${Auto.convertCaptureTimeToDate(
+              plate.captureTime
+            )}`
+          )
       );
-      
+
       return newPlates;
     } catch (error) {
-      console.error('Error filtering plates:', error);
+      console.error("Error filtering plates:", error);
       return [];
     }
   }
@@ -96,34 +105,47 @@ class CameraService {
 
       // Identificar la playa basándose en la IP de la cámara
       const playa = await this.findPlayaByCamera(sourceIP);
-      
+
       if (!playa) {
         return {
           success: false,
-          message: `No se encontró playa asociada a la IP: ${sourceIP}`
+          message: `No se encontró playa asociada a la IP: ${sourceIP}`,
         };
       }
 
       // Verificar si la playa está abierta
-      if (playa.estado !== 'abierto') {
+      if (playa.estado !== "abierto") {
         return {
           success: false,
-          message: `Playa ${playa.nombre} está cerrada`
+          message: `Playa ${playa.nombre} está cerrada`,
         };
       }
 
       // Generar URL de la imagen basada en la IP de la cámara y timestamp
       const imageUrl = this.generatePlateImageUrl(sourceIP, dateTime);
 
-      // Crear el registro del auto usando fecha/hora del sistema
-      const horaEntrada = moment().tz(config.timezone).toDate();
+      // Usar la fecha/hora de la cámara, no del sistema
+      let horaEntrada;
+      if (dateTime) {
+        // Usar el timestamp de la cámara
+        const cameraDate = moment(dateTime);
+        if (cameraDate.isValid()) {
+          horaEntrada = cameraDate.toDate();
+        } else {
+          // Fallback al sistema solo si el timestamp de la cámara es inválido
+          horaEntrada = moment().tz(config.timezone).toDate();
+        }
+      } else {
+        // Fallback al sistema solo si no hay dateTime de la cámara
+        horaEntrada = moment().tz(config.timezone).toDate();
+      }
 
       const autoData = {
         id_playa: playa.id_playa,
         placa: licensePlate.toUpperCase(),
         horaEntrada: horaEntrada,
         image: imageUrl,
-        state: 1 // Estado inicial: NO TICKET
+        state: 1, // Estado inicial: NO TICKET
       };
 
       const newAuto = await Auto.create(autoData);
@@ -131,14 +153,13 @@ class CameraService {
       return {
         success: true,
         data: newAuto,
-        message: 'Vehículo registrado exitosamente'
+        message: "Vehículo registrado exitosamente",
       };
-
     } catch (error) {
-      console.error('Error procesando detección:', error.message);
+      console.error("Error procesando detección:", error.message);
       return {
         success: false,
-        message: `Error interno: ${error.message}`
+        message: `Error interno: ${error.message}`,
       };
     }
   }
@@ -149,7 +170,7 @@ class CameraService {
       const playa = await Playa.findByCameraIP(sourceIP);
       return playa;
     } catch (error) {
-      console.error('Error finding playa by camera:', error);
+      console.error("Error finding playa by camera:", error);
       return null;
     }
   }
@@ -164,28 +185,28 @@ class CameraService {
   static generatePlateImageUrl(sourceIP, dateTime) {
     try {
       let timestamp;
-      
+
       if (dateTime) {
         // Convertir el dateTime a formato YYYYMMDDHHMMSS000
         const date = moment(dateTime);
         if (date.isValid()) {
-          timestamp = date.format('YYYYMMDDHHMMSS') + '000';
+          timestamp = date.format("YYYYMMDDHHMMSS") + "000";
         } else {
           // Si no se puede parsear, usar timestamp actual
-          timestamp = moment().format('YYYYMMDDHHMMSS') + '000';
+          timestamp = moment().format("YYYYMMDDHHMMSS") + "000";
         }
       } else {
         // Si no hay dateTime, usar timestamp actual
-        timestamp = moment().format('YYYYMMDDHHMMSS') + '000';
+        timestamp = moment().format("YYYYMMDDHHMMSS") + "000";
       }
 
       // Construir la URL de la imagen
       const imageUrl = `http://${sourceIP}:80/doc/ui/images/plate/${timestamp}.jpg`;
       return imageUrl;
     } catch (error) {
-      console.error('Error generating plate image URL:', error);
+      console.error("Error generating plate image URL:", error);
       // Fallback con timestamp actual
-      const timestamp = moment().format('YYYYMMDDHHMMSS') + '000';
+      const timestamp = moment().format("YYYYMMDDHHMMSS") + "000";
       return `http://${sourceIP}:80/doc/ui/images/plate/${timestamp}.jpg`;
     }
   }

@@ -167,6 +167,7 @@ class CameraController {
         dataSource,
         queryData: dataSource === "query" ? req.query : null,
       });
+      console.log("📸 Resultado de detección:", JSON.stringify(result, null, 2));
 
       if (result.success) {
         // Emitir notificación WebSocket para actualización en tiempo real

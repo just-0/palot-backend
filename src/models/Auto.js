@@ -129,7 +129,8 @@ class Auto {
 
   static async findActiveByPlate(placa, idPlaya) {
     try {
-      const query = "SELECT * FROM Auto WHERE placa = ? AND id_playa = ? AND hora_salida IS NULL LIMIT 1";
+      const query =
+        "SELECT * FROM Auto WHERE placa = ? AND id_playa = ? AND hora_salida IS NULL LIMIT 1";
       const results = await db.query(query, [placa, idPlaya]);
       return results.length > 0 ? results[0] : null;
     } catch (error) {
