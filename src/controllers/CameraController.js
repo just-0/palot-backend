@@ -22,12 +22,20 @@ class CameraController {
    * Soporta dos formatos:
    * 1. Query params (detección real de placas): ?licensePlate=ABC123&eventType=vehicleDetection
    * 2. XML body (eventos de movimiento): <EventNotificationAlert><eventType>VMD</eventType>...
-   * 
+   *
    * Solo procesa eventos de detección de placas, ignora eventos de movimiento (VMD)
    * Crea automáticamente registros de Auto con estado 1 (NO TICKET)
    */
   static async receiveVehicleDetection(req, res) {
     try {
+      // DEBUG: Ver qué está enviando la cámara
+      console.log("🚨 PETICIÓN RECIBIDA EN CONTROLADOR:");
+      console.log("   📋 Headers:", JSON.stringify(req.headers, null, 2));
+      console.log("   🔍 Query params:", JSON.stringify(req.query, null, 2));
+      console.log("   📦 Body:", req.body);
+      console.log("   📏 Body length:", req.body ? req.body.length : 0);
+      console.log("   📄 Content-Type:", req.headers["content-type"]);
+
       const sourceIP =
         req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
         req.headers["x-real-ip"] ||
@@ -39,7 +47,11 @@ class CameraController {
       let dataSource = "unknown";
 
       // Detectar formato de datos: Query Params (detección real) vs XML (eventos varios)
-      if (req.query && Object.keys(req.query).length > 0 && req.query.licensePlate) {
+      if (
+        req.query &&
+        Object.keys(req.query).length > 0 &&
+        req.query.licensePlate
+      ) {
         // Formato 1: Datos en Query Params - Detección real de placas
         eventType = req.query.eventType;
         plateNumber = req.query.licensePlate || req.query.plateNumber;
@@ -47,7 +59,6 @@ class CameraController {
         dateTime = req.query.dateTime;
         eventState = "active";
         dataSource = "query";
-
       } else if (
         req.headers["content-type"]?.includes("application/xml") ||
         req.headers["content-type"]?.includes("text/xml")
@@ -83,7 +94,8 @@ class CameraController {
         if (!alarmEvent) {
           return res.status(config.httpCodes.BAD_REQUEST).json({
             success: false,
-            message: "Invalid XML: AlarmEvent or EventNotificationAlert not found",
+            message:
+              "Invalid XML: AlarmEvent or EventNotificationAlert not found",
           });
         }
 
@@ -96,12 +108,12 @@ class CameraController {
         dateTime = alarmEvent.dateTime;
         eventState = alarmEvent.eventState;
         dataSource = "xml";
-
       } else {
         // Formato no reconocido
         return res.status(config.httpCodes.BAD_REQUEST).json({
           success: false,
-          message: "Invalid format: expected query params with licensePlate or XML",
+          message:
+            "Invalid format: expected query params with licensePlate or XML",
         });
       }
 
@@ -175,16 +187,21 @@ class CameraController {
         dataSource,
         queryData: dataSource === "query" ? req.query : null,
       });
-      console.log("📸 Resultado de detección:", JSON.stringify(result, null, 2));
+      console.log(
+        "📸 Resultado de detección:",
+        JSON.stringify(result, null, 2)
+      );
 
       if (result.success) {
         // Emitir notificación WebSocket para actualización en tiempo real
         if (result.data && global.io) {
-          global.io.to(`playa-${result.data.id_playa}`).emit("vehicle-detected", {
-            type: "vehicle-entry",
-            vehicle: result.data,
-            timestamp: new Date().toISOString(),
-          });
+          global.io
+            .to(`playa-${result.data.id_playa}`)
+            .emit("vehicle-detected", {
+              type: "vehicle-entry",
+              vehicle: result.data,
+              timestamp: new Date().toISOString(),
+            });
         }
 
         // Respuesta exitosa en formato XML para la cámara
