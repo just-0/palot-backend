@@ -279,14 +279,8 @@ class CameraService {
       if (targetPlate && targetPlate.picName) {
         const imageUrl = `http://${sourceIP}:80/doc/ui/images/plate/${targetPlate.picName}.jpg`;
 
-        console.log("🖼️ URL DE IMAGEN GENERADA DESDE CÁMARA:");
-        console.log("   🏢 Playa:", playa.nombre);
-        console.log("   📍 IP Cámara:", sourceIP);
-        console.log("   🚗 Placa buscada:", licensePlate);
-        console.log("   🎯 Placa encontrada:", targetPlate.plateNumber);
-        console.log("   ⏰ CaptureTime:", targetPlate.captureTime);
-        console.log("   🖼️ PicName de la cámara:", targetPlate.picName);
-        console.log("   🌐 URL final:", imageUrl);
+        console.log("✅ PicName obtenido de la cámara:", targetPlate.picName);
+        console.log("✅ URL final:", imageUrl);
 
         return imageUrl;
       } else {
@@ -299,51 +293,6 @@ class CameraService {
         error.message
       );
       return `http://${sourceIP}:80/doc/ui/images/plate/error_consulta.jpg`;
-    }
-  }
-
-  /**
-   * Parsea el formato de fecha/hora específico de la cámara
-   * Entrada: 20250725T143605-500
-   * Salida: 202507251436054480 (usando exactamente los datos de la cámara)
-   * @param {string} cameraDateTime - Formato de cámara
-   * @returns {string} - Timestamp formateado para URL de imagen
-   */
-  static parseCameraDateTime(cameraDateTime) {
-    try {
-      // Formato de entrada: 20250725T143605-500
-      // Extraer partes: YYYYMMDD T HHMMSS -500
-      const match = cameraDateTime.match(/^(\d{8})T(\d{6})(-?\d+)?/);
-
-      if (match) {
-        const datePart = match[1]; // 20250725
-        const timePart = match[2]; // 143605
-        const offsetPart = match[3]; // -500
-
-        // Usar el offset directamente de la cámara para generar los últimos 4 dígitos
-        let millisecondsPart = "0000";
-
-        if (offsetPart) {
-          const offset = Math.abs(parseInt(offsetPart)); // 500
-          // Para -500 debe generar 4480 (según el ejemplo real de la cámara)
-          // Calculamos: 500 * 8.96 = 4480
-          const multiplier = 8.96;
-          const generated = Math.round(offset * multiplier);
-          millisecondsPart = String(generated).padStart(4, "0");
-        } else {
-          // Si no hay offset, usar timestamp actual de la cámara
-          const now = new Date();
-          millisecondsPart = String(now.getMilliseconds()).padStart(4, "0");
-        }
-
-        return datePart + timePart + millisecondsPart; // 202507251436054480
-      } else {
-        // Fallback: usar timestamp actual
-        return moment().format("YYYYMMDDHHMMSS") + "0000";
-      }
-    } catch (error) {
-      console.error("Error parsing camera dateTime:", error);
-      return moment().format("YYYYMMDDHHMMSS") + "0000";
     }
   }
 
