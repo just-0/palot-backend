@@ -277,10 +277,11 @@ class CameraService {
       }
 
       if (targetPlate && targetPlate.picName) {
-        const imageUrl = `http://${sourceIP}:80/doc/ui/images/plate/${targetPlate.picName}.jpg`;
+        // Generar URL usando el endpoint proxy del backend
+        const imageUrl = `http://localhost:3000/api/camera/image/${targetPlate.picName}.jpg?ip=${sourceIP}`;
 
         console.log("✅ PicName obtenido de la cámara:", targetPlate.picName);
-        console.log("✅ URL final:", imageUrl);
+        console.log("✅ URL proxy generada:", imageUrl);
 
         return imageUrl;
       } else {

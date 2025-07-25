@@ -164,6 +164,53 @@ app.get(
 app.post("/camera/vehicle-detection", CameraController.receiveVehicleDetection);
 app.post("/vehicle-detection", CameraController.receiveVehicleDetection);
 
+// Endpoint proxy para imágenes de cámaras (requiere autenticación)
+app.get("/api/camera/image/:filename", async (req, res) => {
+  try {
+    const filename = req.params.filename;
+    const cameraIP = req.query.ip;
+    
+    if (!filename || !cameraIP) {
+      return res.status(400).json({ error: "Filename and IP are required" });
+    }
+
+    // Buscar la playa por IP de cámara para obtener credenciales
+    const PlayaController = require("./controllers/PlayaController");
+    const CameraService = require("./services/CameraService");
+    
+    const playa = await CameraService.findPlayaByCamera(cameraIP);
+    if (!playa || !playa.cam_user || !playa.cam_password) {
+      return res.status(404).json({ error: "Camera credentials not found" });
+    }
+
+    // Hacer request autenticado a la cámara
+    const imageUrl = `http://${cameraIP}:80/doc/ui/images/plate/${filename}`;
+    const authHeader = "Basic " + Buffer.from(playa.cam_user + ":" + playa.cam_password).toString("base64");
+
+    const axios = require("axios");
+    const response = await axios({
+      method: "GET",
+      url: imageUrl,
+      timeout: 5000,
+      headers: {
+        "Authorization": authHeader,
+      },
+      responseType: 'stream'
+    });
+
+    // Configurar headers de respuesta
+    res.set('Content-Type', response.headers['content-type'] || 'image/jpeg');
+    res.set('Cache-Control', 'public, max-age=3600'); // Cache por 1 hora
+    
+    // Pipe la imagen directamente al cliente
+    response.data.pipe(res);
+
+  } catch (error) {
+    console.error("Error sirviendo imagen de cámara:", error.message);
+    res.status(500).json({ error: "Error loading camera image" });
+  }
+});
+
 // Endpoint de prueba para cámaras - PARA TESTING
 app.all("/camera/test", (req, res) => {
   console.log("🧪 ===== ENDPOINT DE PRUEBA CÁMARA =====");
