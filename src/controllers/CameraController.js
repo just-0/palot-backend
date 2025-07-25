@@ -155,6 +155,14 @@ class CameraController {
         return res.status(config.httpCodes.BAD_REQUEST).send(errorXML);
       }
 
+      // LOG 1: Información recibida de la cámara
+      console.log("🔍 DATOS RECIBIDOS DE LA CÁMARA:");
+      console.log("   📍 IP Cámara:", sourceIP);
+      console.log("   🚗 Placa:", plateNumber?.trim().toUpperCase());
+      console.log("   ⏰ DateTime:", dateTime);
+      console.log("   📊 EventType:", eventType);
+      console.log("   📡 DataSource:", dataSource);
+
       // Procesar la detección de vehículo
       const result = await CameraService.processVehicleDetection({
         licensePlate: plateNumber.trim().toUpperCase(),

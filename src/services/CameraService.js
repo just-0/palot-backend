@@ -190,6 +190,14 @@ class CameraService {
 
       // Construir la URL de la imagen
       const imageUrl = `http://${sourceIP}:80/doc/ui/images/plate/${timestamp}.jpg`;
+      
+      // LOG 2: Construcción de la URL de la imagen
+      console.log("🖼️ CONSTRUCCIÓN URL DE IMAGEN:");
+      console.log("   📍 IP Cámara:", sourceIP);
+      console.log("   ⏰ DateTime original:", dateTime);
+      console.log("   🔢 Timestamp procesado:", timestamp);
+      console.log("   🌐 URL final:", imageUrl);
+      
       return imageUrl;
     } catch (error) {
       console.error("Error generating plate image URL:", error);
