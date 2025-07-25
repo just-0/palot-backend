@@ -22,42 +22,44 @@ const io = new Server(httpServer, {
   cors: {
     origin: ["http://localhost:4200", "http://127.0.0.1:4200"],
     methods: ["GET", "POST"],
-    credentials: true
+    credentials: true,
   },
-  transports: ['websocket', 'polling']
+  transports: ["websocket", "polling"],
 });
 
 // Make io globally available for camera notifications
 global.io = io;
 
 // Socket.IO connection handling
-io.on('connection', (socket) => {
+io.on("connection", (socket) => {
   console.log(`📡 Cliente WebSocket conectado: ${socket.id}`);
 
   // Handle joining playa room
-  socket.on('join-playa', (playaId) => {
+  socket.on("join-playa", (playaId) => {
     const roomName = `playa-${playaId}`;
     socket.join(roomName);
     console.log(`🏢 Cliente ${socket.id} se unió a la sala: ${roomName}`);
-    
+
     // Confirm room join
-    socket.emit('joined-playa', { playaId, roomName });
+    socket.emit("joined-playa", { playaId, roomName });
   });
 
   // Handle leaving playa room
-  socket.on('leave-playa', (playaId) => {
+  socket.on("leave-playa", (playaId) => {
     const roomName = `playa-${playaId}`;
     socket.leave(roomName);
     console.log(`🚪 Cliente ${socket.id} salió de la sala: ${roomName}`);
   });
 
   // Handle disconnection
-  socket.on('disconnect', (reason) => {
-    console.log(`📡 Cliente WebSocket desconectado: ${socket.id} - Razón: ${reason}`);
+  socket.on("disconnect", (reason) => {
+    console.log(
+      `📡 Cliente WebSocket desconectado: ${socket.id} - Razón: ${reason}`
+    );
   });
 
   // Handle connection errors
-  socket.on('error', (error) => {
+  socket.on("error", (error) => {
     console.error(`❌ Error en WebSocket ${socket.id}:`, error);
   });
 });
@@ -94,8 +96,18 @@ app.use(express.raw({ type: "application/octet-stream", limit: "10mb" }));
 
 // Middleware simple para detectar peticiones de cámaras
 app.use((req, res, next) => {
-  if (req.url.includes('/camera') || req.url.includes('/vehicle-detection') || req.url.includes('/ISAPI')) {
-    console.log("📷 Petición cámara:", req.method, req.url, "IP:", req.ip || req.connection.remoteAddress);
+  if (
+    req.url.includes("/camera") ||
+    req.url.includes("/vehicle-detection") ||
+    req.url.includes("/ISAPI")
+  ) {
+    console.log(
+      "📷 Petición cámara:",
+      req.method,
+      req.url,
+      "IP:",
+      req.ip || req.connection.remoteAddress
+    );
   }
   next();
 });
@@ -169,7 +181,7 @@ app.get("/api/camera/image/:filename", async (req, res) => {
   try {
     const filename = req.params.filename;
     const cameraIP = req.query.ip;
-    
+
     if (!filename || !cameraIP) {
       return res.status(400).json({ error: "Filename and IP are required" });
     }
@@ -177,7 +189,7 @@ app.get("/api/camera/image/:filename", async (req, res) => {
     // Buscar la playa por IP de cámara para obtener credenciales
     const PlayaController = require("./controllers/PlayaController");
     const CameraService = require("./services/CameraService");
-    
+
     const playa = await CameraService.findPlayaByCamera(cameraIP);
     if (!playa || !playa.cam_user || !playa.cam_password) {
       return res.status(404).json({ error: "Camera credentials not found" });
@@ -185,7 +197,9 @@ app.get("/api/camera/image/:filename", async (req, res) => {
 
     // Hacer request autenticado a la cámara
     const imageUrl = `http://${cameraIP}:80/doc/ui/images/plate/${filename}`;
-    const authHeader = "Basic " + Buffer.from(playa.cam_user + ":" + playa.cam_password).toString("base64");
+    const authHeader =
+      "Basic " +
+      Buffer.from(playa.cam_user + ":" + playa.cam_password).toString("base64");
 
     const axios = require("axios");
     const response = await axios({
@@ -193,18 +207,17 @@ app.get("/api/camera/image/:filename", async (req, res) => {
       url: imageUrl,
       timeout: 5000,
       headers: {
-        "Authorization": authHeader,
+        Authorization: authHeader,
       },
-      responseType: 'stream'
+      responseType: "stream",
     });
 
     // Configurar headers de respuesta
-    res.set('Content-Type', response.headers['content-type'] || 'image/jpeg');
-    res.set('Cache-Control', 'public, max-age=3600'); // Cache por 1 hora
-    
+    res.set("Content-Type", response.headers["content-type"] || "image/jpeg");
+    res.set("Cache-Control", "public, max-age=3600"); // Cache por 1 hora
+
     // Pipe la imagen directamente al cliente
     response.data.pipe(res);
-
   } catch (error) {
     console.error("Error sirviendo imagen de cámara:", error.message);
     res.status(500).json({ error: "Error loading camera image" });
@@ -220,7 +233,7 @@ app.all("/camera/test", (req, res) => {
   console.log("🧪 Body:", req.body);
   console.log("🧪 IP:", req.ip || req.connection.remoteAddress);
   console.log("🧪 =====================================");
-  
+
   res.json({
     success: true,
     message: "Test endpoint funcionando correctamente",
@@ -230,8 +243,8 @@ app.all("/camera/test", (req, res) => {
       query: req.query,
       body: req.body,
       ip: req.ip || req.connection.remoteAddress,
-      timestamp: new Date().toISOString()
-    }
+      timestamp: new Date().toISOString(),
+    },
   });
 });
 
@@ -298,17 +311,31 @@ const server = httpServer.listen(config.port, config.host, () => {
 });
 
 // Graceful shutdown
-process.on("SIGTERM", gracefulShutdown);
-process.on("SIGINT", gracefulShutdown);
+let isShuttingDown = false;
 
 async function gracefulShutdown(signal) {
+  if (isShuttingDown) {
+    console.log("� Sehutdown already in progress...");
+    return;
+  }
+
+  isShuttingDown = true;
   console.log(`\n🛑 Received ${signal}. Starting graceful shutdown...`);
 
+  // Cerrar WebSocket connections
+  if (global.io) {
+    console.log("🔌 Closing WebSocket connections...");
+    global.io.close();
+  }
+
+  // Cerrar servidor HTTP
   server.close(async () => {
     console.log("🔌 HTTP server closed");
 
     try {
+      // Cerrar conexión a la base de datos
       await database.close();
+      console.log("🔌 Database connection closed");
       console.log("✅ Graceful shutdown completed");
       process.exit(0);
     } catch (error) {
@@ -316,4 +343,24 @@ async function gracefulShutdown(signal) {
       process.exit(1);
     }
   });
+
+  // Forzar cierre después de 10 segundos si no se cierra normalmente
+  setTimeout(() => {
+    console.error("⚠️ Forcing shutdown after timeout");
+    process.exit(1);
+  }, 10000);
 }
+
+process.on("SIGTERM", gracefulShutdown);
+process.on("SIGINT", gracefulShutdown);
+
+// Manejar errores no capturados
+process.on("uncaughtException", (error) => {
+  console.error("❌ Uncaught Exception:", error);
+  gracefulShutdown("uncaughtException");
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason);
+  gracefulShutdown("unhandledRejection");
+});
