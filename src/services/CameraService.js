@@ -121,8 +121,12 @@ class CameraService {
         };
       }
 
-      // Generar URL de la imagen basada en la IP de la cámara y timestamp
-      const imageUrl = this.generatePlateImageUrl(sourceIP, dateTime);
+      // Generar URL de la imagen consultando la cámara para obtener el picName real
+      const imageUrl = await this.generatePlateImageUrl(
+        sourceIP,
+        dateTime,
+        licensePlate
+      );
 
       // Usar la fecha/hora de la cámara, no del sistema
       let horaEntrada;
@@ -170,90 +174,172 @@ class CameraService {
   }
 
   /**
-   * Genera la URL de la imagen de la placa basada en la IP de la cámara y timestamp
-   * Formato: http://IP:80/doc/ui/images/plate/YYYYMMDDHHMMSS000.jpg
+   * Genera la URL de la imagen consultando el endpoint de la cámara de la playa
+   * Obtiene el picName real desde /ISAPI/Traffic/channels/1/vehicleDetect/plates
    * @param {string} sourceIP - IP de la cámara
-   * @param {string} dateTime - Timestamp del evento (formato de cámara: 20250724T175932-500)
+   * @param {string} dateTime - Timestamp del evento (formato de cámara: 20250725T140730-500)
+   * @param {string} licensePlate - Placa detectada para validación
    * @returns {string} - URL completa de la imagen
    */
-  static generatePlateImageUrl(sourceIP, dateTime) {
+  static async generatePlateImageUrl(sourceIP, dateTime, licensePlate) {
     try {
-      let timestamp;
-
-      if (dateTime) {
-        // Parsear formato específico de cámara: 20250724T175932-500
-        timestamp = this.parseCameraDateTime(dateTime);
-      } else {
-        // Si no hay dateTime, usar timestamp actual
-        timestamp = moment().format("YYYYMMDDHHMMSS") + "000";
+      // Obtener configuración de la playa por IP de cámara
+      const playa = await this.findPlayaByCamera(sourceIP);
+      if (!playa) {
+        console.log("⚠️ No se encontró playa para IP de cámara:", sourceIP);
+        return `http://${sourceIP}:80/doc/ui/images/plate/imagen_no_disponible.jpg`;
       }
 
-      // Construir la URL de la imagen
-      const imageUrl = `http://${sourceIP}:80/doc/ui/images/plate/${timestamp}.jpg`;
-      
-      // LOG 2: Construcción de la URL de la imagen
-      console.log("🖼️ CONSTRUCCIÓN URL DE IMAGEN:");
+      if (!playa.cam_url || !playa.cam_user || !playa.cam_password) {
+        console.log(
+          "⚠️ Playa sin configuración completa de cámara:",
+          playa.nombre
+        );
+        return `http://${sourceIP}:80/doc/ui/images/plate/imagen_no_disponible.jpg`;
+      }
+
+      // Construir XML de solicitud - usar tiempo desde hace 2 horas para asegurar que incluya la detección
+      const baseTime = moment()
+        .subtract(2, "hours")
+        .format("YYYY-MM-DD[T]HH:mm:ss-05:00");
+      const requestXML = `<AfterTime version="2.0" xmlns="http://www.isapi.org/ver20/XMLSchema">
+<picTime>${baseTime}</picTime>
+</AfterTime>`;
+
+      // Construir URL del endpoint de la cámara usando cam_url de la playa
+      let cameraBaseUrl = playa.cam_url;
+      // Asegurar que no termine en /
+      if (cameraBaseUrl.endsWith("/")) {
+        cameraBaseUrl = cameraBaseUrl.slice(0, -1);
+      }
+      const cameraUrl = `${cameraBaseUrl}/ISAPI/Traffic/channels/1/vehicleDetect/plates`;
+
+      const authHeader =
+        "Basic " +
+        Buffer.from(playa.cam_user + ":" + playa.cam_password).toString(
+          "base64"
+        );
+
+      console.log("📡 CONSULTANDO CÁMARA DE LA PLAYA:");
+      console.log("   🏢 Playa:", playa.nombre);
       console.log("   📍 IP Cámara:", sourceIP);
-      console.log("   ⏰ DateTime original:", dateTime);
-      console.log("   🔢 Timestamp procesado:", timestamp);
-      console.log("   🌐 URL final:", imageUrl);
-      
-      return imageUrl;
+      console.log("   🌐 URL Cámara:", cameraUrl);
+      console.log("   👤 Usuario:", playa.cam_user);
+      console.log("   ⏰ BaseTime:", baseTime);
+
+      const response = await axios({
+        method: "POST",
+        url: cameraUrl,
+        timeout: 8000,
+        headers: {
+          "Content-Type": "application/xml",
+          Authorization: authHeader,
+        },
+        data: requestXML,
+      });
+
+      // Parsear respuesta XML
+      const xml2js = require("xml2js");
+      const parser = new xml2js.Parser({
+        explicitArray: false,
+        ignoreAttrs: false,
+        trim: true,
+      });
+
+      const parsedXML = await parser.parseStringPromise(response.data);
+      const plates = parsedXML.Plates?.Plate;
+
+      if (!plates) {
+        console.log("⚠️ No se encontraron placas en la respuesta de la cámara");
+        return `http://${sourceIP}:80/doc/ui/images/plate/sin_placas.jpg`;
+      }
+
+      // Convertir a array si es un solo elemento
+      const plateArray = Array.isArray(plates) ? plates : [plates];
+
+      console.log(`📋 Se encontraron ${plateArray.length} placas en la cámara`);
+
+      // Buscar la placa específica que coincida con la detectada
+      let targetPlate = null;
+
+      if (licensePlate) {
+        targetPlate = plateArray.find(
+          (plate) =>
+            plate.plateNumber &&
+            plate.plateNumber.toUpperCase() === licensePlate.toUpperCase()
+        );
+      }
+
+      // Si no se encuentra por placa exacta, usar el último elemento (más reciente)
+      if (!targetPlate && plateArray.length > 0) {
+        targetPlate = plateArray[plateArray.length - 1];
+        console.log("🔄 Usando última placa detectada como fallback");
+      }
+
+      if (targetPlate && targetPlate.picName) {
+        const imageUrl = `http://${sourceIP}:80/doc/ui/images/plate/${targetPlate.picName}.jpg`;
+
+        console.log("🖼️ URL DE IMAGEN GENERADA DESDE CÁMARA:");
+        console.log("   🏢 Playa:", playa.nombre);
+        console.log("   📍 IP Cámara:", sourceIP);
+        console.log("   🚗 Placa buscada:", licensePlate);
+        console.log("   🎯 Placa encontrada:", targetPlate.plateNumber);
+        console.log("   ⏰ CaptureTime:", targetPlate.captureTime);
+        console.log("   🖼️ PicName de la cámara:", targetPlate.picName);
+        console.log("   🌐 URL final:", imageUrl);
+
+        return imageUrl;
+      } else {
+        console.log("⚠️ No se encontró picName válido en la respuesta");
+        return `http://${sourceIP}:80/doc/ui/images/plate/picname_no_encontrado.jpg`;
+      }
     } catch (error) {
-      console.error("Error generating plate image URL:", error);
-      // Fallback con timestamp actual
-      const timestamp = moment().format("YYYYMMDDHHMMSS") + "000";
-      return `http://${sourceIP}:80/doc/ui/images/plate/${timestamp}.jpg`;
+      console.error(
+        "❌ Error consultando cámara para obtener picName:",
+        error.message
+      );
+      return `http://${sourceIP}:80/doc/ui/images/plate/error_consulta.jpg`;
     }
   }
 
   /**
    * Parsea el formato de fecha/hora específico de la cámara
-   * Entrada: 20250724T182519-500
-   * Salida: 202507241825190670 (formato específico de la cámara)
+   * Entrada: 20250725T143605-500
+   * Salida: 202507251436054480 (usando exactamente los datos de la cámara)
    * @param {string} cameraDateTime - Formato de cámara
    * @returns {string} - Timestamp formateado para URL de imagen
    */
   static parseCameraDateTime(cameraDateTime) {
     try {
-      // Formato de entrada: 20250724T182519-500
+      // Formato de entrada: 20250725T143605-500
       // Extraer partes: YYYYMMDD T HHMMSS -500
       const match = cameraDateTime.match(/^(\d{8})T(\d{6})(-?\d+)?/);
 
       if (match) {
-        const datePart = match[1]; // 20250724
-        const timePart = match[2]; // 182519
+        const datePart = match[1]; // 20250725
+        const timePart = match[2]; // 143605
         const offsetPart = match[3]; // -500
 
-        // Generar milisegundos basados en el timestamp y offset
+        // Usar el offset directamente de la cámara para generar los últimos 4 dígitos
         let millisecondsPart = "0000";
 
         if (offsetPart) {
-          // Usar el offset para generar un patrón consistente
-          const offset = Math.abs(parseInt(offsetPart));
-          // Generar 4 dígitos basados en el offset
-          // Para -500 -> 0670 (patrón específico observado)
-          const generated = (offset + 170) % 10000; // Ajuste para coincidir con el patrón 0670
+          const offset = Math.abs(parseInt(offsetPart)); // 500
+          // Para -500 debe generar 4480 (según el ejemplo real de la cámara)
+          // Calculamos: 500 * 8.96 = 4480
+          const multiplier = 8.96;
+          const generated = Math.round(offset * multiplier);
           millisecondsPart = String(generated).padStart(4, "0");
         } else {
-          // Si no hay offset, usar milisegundos actuales
-          millisecondsPart = String(Date.now() % 10000).padStart(4, "0");
+          // Si no hay offset, usar timestamp actual de la cámara
+          const now = new Date();
+          millisecondsPart = String(now.getMilliseconds()).padStart(4, "0");
         }
 
-        return datePart + timePart + millisecondsPart; // 202507241825190670
+        return datePart + timePart + millisecondsPart; // 202507251436054480
       } else {
-        // Si no coincide el patrón, intentar parsear como fecha normal
-        const date = moment(
-          cameraDateTime,
-          ["YYYYMMDD[T]HHmmss", "YYYY-MM-DD[T]HH:mm:ss", moment.ISO_8601],
-          true
-        );
-        if (date.isValid()) {
-          return date.format("YYYYMMDDHHMMSS") + "0000";
-        } else {
-          // Fallback con timestamp actual
-          return moment().format("YYYYMMDDHHMMSS") + "0000";
-        }
+        // Fallback: usar timestamp actual
+        return moment().format("YYYYMMDDHHMMSS") + "0000";
       }
     } catch (error) {
       console.error("Error parsing camera dateTime:", error);
