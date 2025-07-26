@@ -32,13 +32,13 @@ global.io = io;
 
 // Socket.IO connection handling
 io.on("connection", (socket) => {
-  console.log(`📡 Cliente WebSocket conectado: ${socket.id}`);
+
 
   // Handle joining playa room
   socket.on("join-playa", (playaId) => {
     const roomName = `playa-${playaId}`;
     socket.join(roomName);
-    console.log(`🏢 Cliente ${socket.id} se unió a la sala: ${roomName}`);
+
 
     // Confirm room join
     socket.emit("joined-playa", { playaId, roomName });
@@ -48,19 +48,17 @@ io.on("connection", (socket) => {
   socket.on("leave-playa", (playaId) => {
     const roomName = `playa-${playaId}`;
     socket.leave(roomName);
-    console.log(`🚪 Cliente ${socket.id} salió de la sala: ${roomName}`);
+
   });
 
   // Handle disconnection
   socket.on("disconnect", (reason) => {
-    console.log(
-      `📡 Cliente WebSocket desconectado: ${socket.id} - Razón: ${reason}`
-    );
+    // Cliente desconectado
   });
 
   // Handle connection errors
   socket.on("error", (error) => {
-    console.error(`❌ Error en WebSocket ${socket.id}:`, error);
+    // Error en WebSocket
   });
 });
 
@@ -101,13 +99,7 @@ app.use((req, res, next) => {
     req.url.includes("/vehicle-detection") ||
     req.url.includes("/ISAPI")
   ) {
-    console.log(
-      "📷 Petición cámara:",
-      req.method,
-      req.url,
-      "IP:",
-      req.ip || req.connection.remoteAddress
-    );
+
   }
   next();
 });
@@ -219,21 +211,13 @@ app.get("/api/camera/image/:filename", async (req, res) => {
     // Pipe la imagen directamente al cliente
     response.data.pipe(res);
   } catch (error) {
-    console.error("Error sirviendo imagen de cámara:", error.message);
+
     res.status(500).json({ error: "Error loading camera image" });
   }
 });
 
 // Endpoint de prueba para cámaras - PARA TESTING
 app.all("/camera/test", (req, res) => {
-  console.log("🧪 ===== ENDPOINT DE PRUEBA CÁMARA =====");
-  console.log("🧪 Method:", req.method);
-  console.log("🧪 Headers:", JSON.stringify(req.headers, null, 2));
-  console.log("🧪 Query:", JSON.stringify(req.query, null, 2));
-  console.log("🧪 Body:", req.body);
-  console.log("🧪 IP:", req.ip || req.connection.remoteAddress);
-  console.log("🧪 =====================================");
-
   res.json({
     success: true,
     message: "Test endpoint funcionando correctamente",
@@ -298,14 +282,6 @@ app.use("*", (req, res) => {
 
 // Start server with Socket.IO support
 const server = httpServer.listen(config.port, config.host, () => {
-  console.log("🚀 ================================");
-  console.log("🚀 PALOT BACKEND SERVER STARTED");
-  console.log("🚀 ================================");
-  console.log(`🌐 Server: http://${config.host}:${config.port}`);
-  console.log(`📊 Environment: ${config.nodeEnv}`);
-  console.log("📷 Endpoints de cámaras configurados ✅");
-  console.log("🚀 ================================");
-
   // Inicializar servicios de cron
   CronService.init();
 });
@@ -324,29 +300,23 @@ async function gracefulShutdown(signal) {
 
   // Cerrar WebSocket connections
   if (global.io) {
-    console.log("🔌 Closing WebSocket connections...");
     global.io.close();
   }
 
   // Cerrar servidor HTTP
   server.close(async () => {
-    console.log("🔌 HTTP server closed");
 
     try {
       // Cerrar conexión a la base de datos
       await database.close();
-      console.log("🔌 Database connection closed");
-      console.log("✅ Graceful shutdown completed");
       process.exit(0);
     } catch (error) {
-      console.error("❌ Error during shutdown:", error);
       process.exit(1);
     }
   });
 
   // Forzar cierre después de 10 segundos si no se cierra normalmente
   setTimeout(() => {
-    console.error("⚠️ Forcing shutdown after timeout");
     process.exit(1);
   }, 10000);
 }
@@ -356,7 +326,7 @@ process.on("SIGINT", gracefulShutdown);
 
 // Manejar errores no capturados
 process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error);
+
   gracefulShutdown("uncaughtException");
 });
 

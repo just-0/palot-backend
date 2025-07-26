@@ -5,12 +5,8 @@ const prisma = new PrismaClient();
 
 class CronService {
   static init() {
-    console.log('Iniciando servicios de cron...');
-    
     // Cerrar todas las playas a las 23:59 todos los días
     cron.schedule('59 23 * * *', async () => {
-      console.log('Cerrando todas las playas automáticamente a las 23:59...');
-      
       try {
         // Obtener todas las playas abiertas
         const playasAbiertas = await prisma.playa.findMany({
@@ -18,8 +14,6 @@ class CronService {
         });
 
         if (playasAbiertas.length > 0) {
-         
-          
           // Cerrar todas las playas abiertas
           await prisma.playa.updateMany({
             where: { estado: 'abierto' },
@@ -29,19 +23,13 @@ class CronService {
               usuarioCerro: 'SISTEMA_AUTO'
             }
           });
-
-          console.log('✅ Todas las playas han sido cerradas automáticamente');
-        } else {
-          console.log('no hay playas abiertas para cerrar');
         }
       } catch (error) {
-        console.error('❌ Error al cerrar playas automáticamente:', error);
+        // Error al cerrar playas automáticamente
       }
     }, {
       timezone: "America/Lima"
     });
-
-    console.log('✅ Cron job configurado: Cierre automático de playas a las 23:59');
   }
 }
 

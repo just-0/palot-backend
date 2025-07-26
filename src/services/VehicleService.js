@@ -128,31 +128,15 @@ class VehicleService {
       let documentId;
       let documentType;
 
-      if (playa && playa.facturacion) {
-        // Si la playa requiere facturación, crear boleta
-        // Verificar si existe un cliente específico (opcional)
-        const cliente = await Cliente.getByAutoId(data.id);
-        const clienteId = cliente ? cliente.id_cliente : null;
-
-        documentId = await Boleta.create(
-          data.id,
-          null,
-          clienteId,
-          data.Monto,
-          fechaSalida
-        );
-        documentType = "boleta";
-      } else {
-        // Si no requiere facturación, crear ticket
-        documentId = await Ticket.create(
-          data.id,
-          null,
-          null,
-          data.Monto,
-          fechaSalida
-        );
-        documentType = "ticket";
-      }
+      // SIEMPRE crear ticket de venta al procesar pago, independientemente de la facturación
+      documentId = await Ticket.create(
+        data.id,
+        null,
+        null,
+        data.Monto,
+        fechaSalida
+      );
+      documentType = "ticket";
 
       // Actualizar auto
       await Auto.updateExitTime(data.id, fechaSalida, data.state);
@@ -196,31 +180,15 @@ class VehicleService {
       let documentId;
       let documentType;
 
-      if (playa && playa.facturacion) {
-        // Si la playa requiere facturación, crear boleta
-        // Verificar si existe un cliente específico (opcional)
-        const cliente = await Cliente.getByMotoId(data.id);
-        const clienteId = cliente ? cliente.id_cliente : null;
-
-        documentId = await Boleta.create(
-          null,
-          data.id,
-          clienteId,
-          data.Monto,
-          fechaSalida
-        );
-        documentType = "boleta";
-      } else {
-        // Si no requiere facturación, crear ticket
-        documentId = await Ticket.create(
-          null,
-          data.id,
-          null,
-          data.Monto,
-          fechaSalida
-        );
-        documentType = "ticket";
-      }
+      // SIEMPRE crear ticket de venta al procesar pago, independientemente de la facturación
+      documentId = await Ticket.create(
+        null,
+        data.id,
+        null,
+        data.Monto,
+        fechaSalida
+      );
+      documentType = "ticket";
 
       // Actualizar moto
       const updated = await Moto.updateExitTime(

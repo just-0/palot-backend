@@ -20,7 +20,7 @@ class Database {
         console.error("❌ Error al conectar con MySQL: " + err.stack);
         process.exit(1);
       }
-      console.log("✅ Conexión exitosa con MySQL");
+
     });
   }
 
@@ -42,7 +42,7 @@ class Database {
         if (err) {
           reject(err);
         } else {
-          console.log("🔌 Conexión a la base de datos cerrada correctamente");
+
           resolve();
         }
       });

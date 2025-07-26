@@ -53,7 +53,6 @@ class CameraService {
           message: "Plates retrieved successfully",
         };
       } catch (parseError) {
-        console.error("Error parsing camera data:", parseError.message);
         return {
           success: false,
           data: [],
@@ -61,7 +60,6 @@ class CameraService {
         };
       }
     } catch (error) {
-      console.error("Error during camera request:", error.message);
       return {
         success: false,
         data: [],
@@ -88,7 +86,6 @@ class CameraService {
 
       return newPlates;
     } catch (error) {
-      console.error("Error filtering plates:", error);
       return [];
     }
   }
@@ -154,7 +151,6 @@ class CameraService {
         message: "Vehículo registrado exitosamente",
       };
     } catch (error) {
-      console.error("Error procesando detección:", error.message);
       return {
         success: false,
         message: `Error interno: ${error.message}`,
@@ -168,7 +164,6 @@ class CameraService {
       const playa = await Playa.findByCameraIP(sourceIP);
       return playa;
     } catch (error) {
-      console.error("Error finding playa by camera:", error);
       return null;
     }
   }
@@ -191,10 +186,6 @@ class CameraService {
       }
 
       if (!playa.cam_url || !playa.cam_user || !playa.cam_password) {
-        console.log(
-          "⚠️ Playa sin configuración completa de cámara:",
-          playa.nombre
-        );
         return `http://${sourceIP}:80/doc/ui/images/plate/imagen_no_disponible.jpg`;
       }
 
@@ -243,7 +234,6 @@ class CameraService {
       const plates = parsedXML.Plates?.Plate;
 
       if (!plates) {
-        console.log("⚠️ No se encontraron placas en la respuesta de la cámara");
         return `http://${sourceIP}:80/doc/ui/images/plate/sin_placas.jpg`;
       }
 
@@ -273,14 +263,9 @@ class CameraService {
 
         return imageUrl;
       } else {
-        console.log("⚠️ No se encontró picName válido en la respuesta");
         return `http://${sourceIP}:80/doc/ui/images/plate/picname_no_encontrado.jpg`;
       }
     } catch (error) {
-      console.error(
-        "❌ Error consultando cámara para obtener picName:",
-        error.message
-      );
       return `http://${sourceIP}:80/doc/ui/images/plate/error_consulta.jpg`;
     }
   }
@@ -331,7 +316,6 @@ class CameraService {
         return moment().tz(config.timezone).toDate();
       }
     } catch (error) {
-      console.error("Error parsing camera dateTime to Date:", error);
       return moment().tz(config.timezone).toDate();
     }
   }
