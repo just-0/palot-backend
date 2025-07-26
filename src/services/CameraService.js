@@ -140,7 +140,7 @@ class CameraService {
         placa: licensePlate.toUpperCase(),
         horaEntrada: horaEntrada,
         image: imageUrl,
-        state: 1, // Estado inicial: NO TICKET
+        state: 0, // Estado inicial: NO TICKET
       };
 
       const newAuto = await Auto.create(autoData);
