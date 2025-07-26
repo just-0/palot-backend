@@ -186,7 +186,7 @@ class CameraService {
       // Obtener configuración de la playa por IP de cámara
       const playa = await this.findPlayaByCamera(sourceIP);
       if (!playa) {
-        console.log("⚠️ No se encontró playa para IP de cámara:", sourceIP);
+        ("⚠️ No se encontró playa para IP de cámara:", sourceIP);
         return `http://${sourceIP}:80/doc/ui/images/plate/imagen_no_disponible.jpg`;
       }
 
@@ -220,13 +220,6 @@ class CameraService {
           "base64"
         );
 
-      console.log("📡 CONSULTANDO CÁMARA DE LA PLAYA:");
-      console.log("   🏢 Playa:", playa.nombre);
-      console.log("   📍 IP Cámara:", sourceIP);
-      console.log("   🌐 URL Cámara:", cameraUrl);
-      console.log("   👤 Usuario:", playa.cam_user);
-      console.log("   ⏰ BaseTime:", baseTime);
-
       const response = await axios({
         method: "POST",
         url: cameraUrl,
@@ -257,7 +250,6 @@ class CameraService {
       // Convertir a array si es un solo elemento
       const plateArray = Array.isArray(plates) ? plates : [plates];
 
-      console.log(`📋 Se encontraron ${plateArray.length} placas en la cámara`);
 
       // Buscar la placa específica que coincida con la detectada
       let targetPlate = null;
@@ -273,15 +265,11 @@ class CameraService {
       // Si no se encuentra por placa exacta, usar el último elemento (más reciente)
       if (!targetPlate && plateArray.length > 0) {
         targetPlate = plateArray[plateArray.length - 1];
-        console.log("🔄 Usando última placa detectada como fallback");
       }
 
       if (targetPlate && targetPlate.picName) {
         // Generar URL usando el endpoint proxy del backend
         const imageUrl = `http://localhost:3000/api/camera/image/${targetPlate.picName}.jpg?ip=${sourceIP}`;
-
-        console.log("✅ PicName obtenido de la cámara:", targetPlate.picName);
-        console.log("✅ URL proxy generada:", imageUrl);
 
         return imageUrl;
       } else {

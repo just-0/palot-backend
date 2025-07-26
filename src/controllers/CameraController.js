@@ -28,14 +28,6 @@ class CameraController {
    */
   static async receiveVehicleDetection(req, res) {
     try {
-      // DEBUG: Ver qué está enviando la cámara
-      console.log("🚨 PETICIÓN RECIBIDA EN CONTROLADOR:");
-      console.log("   📋 Headers:", JSON.stringify(req.headers, null, 2));
-      console.log("   🔍 Query params:", JSON.stringify(req.query, null, 2));
-      console.log("   📦 Body:", req.body);
-      console.log("   📏 Body length:", req.body ? req.body.length : 0);
-      console.log("   📄 Content-Type:", req.headers["content-type"]);
-
       const sourceIP =
         req.headers["x-forwarded-for"]?.split(",")[0]?.trim() ||
         req.headers["x-real-ip"] ||
@@ -167,14 +159,6 @@ class CameraController {
         return res.status(config.httpCodes.BAD_REQUEST).send(errorXML);
       }
 
-      // LOG 1: Información recibida de la cámara
-      console.log("🔍 DATOS RECIBIDOS DE LA CÁMARA:");
-      console.log("   📍 IP Cámara:", sourceIP);
-      console.log("   🚗 Placa:", plateNumber?.trim().toUpperCase());
-      console.log("   ⏰ DateTime:", dateTime);
-      console.log("   📊 EventType:", eventType);
-      console.log("   📡 DataSource:", dataSource);
-
       // Procesar la detección de vehículo
       const result = await CameraService.processVehicleDetection({
         licensePlate: plateNumber.trim().toUpperCase(),
@@ -187,10 +171,6 @@ class CameraController {
         dataSource,
         queryData: dataSource === "query" ? req.query : null,
       });
-      console.log(
-        "📸 Resultado de detección:",
-        JSON.stringify(result, null, 2)
-      );
 
       if (result.success) {
         // Emitir notificación WebSocket para actualización en tiempo real
