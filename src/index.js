@@ -20,8 +20,8 @@ const httpServer = createServer(app);
 // Configure Socket.IO with CORS
 const io = new Server(httpServer, {
   cors: {
-    origin: ["http://localhost:4200", "http://127.0.0.1:4200"],
-    methods: ["GET", "POST"],
+    origin: config.cors.origin.split(','),
+    methods: config.cors.methods.split(','),
     credentials: true,
   },
   transports: ["websocket", "polling"],
@@ -65,8 +65,8 @@ io.on("connection", (socket) => {
 // Middleware - CORS configuration
 app.use(
   cors({
-    origin: ["http://localhost:4200", "http://127.0.0.1:4200"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    origin: config.cors.origin.split(','),
+    methods: config.cors.methods.split(','),
     allowedHeaders: [
       "Content-Type",
       "Authorization",
