@@ -30,13 +30,15 @@ class CronService {
             console.log(`🏖️  Cerrando playa: ${playa.nombre} (ID: ${playa.id_playa})`);
           });
 
-          // Cerrar todas las playas abiertas
+          // Cerrar todas las playas abiertas y resetear para nuevo día
           const result = await prisma.playa.updateMany({
             where: { estado: 'abierto' },
             data: {
               estado: 'cerrado',
-              horaCerrado: new Date(),
-              usuarioCerro: 'SISTEMA_AUTO'
+              horaAbierto: null,      // Resetear hora de apertura
+              horaCerrado: null,      // Resetear hora de cierre
+              usuarioAbrio: null,     // Resetear usuario que abrió
+              usuarioCerro: null      // Resetear usuario que cerró
             }
           });
 
@@ -113,8 +115,10 @@ class CronService {
           where: { estado: 'abierto' },
           data: {
             estado: 'cerrado',
-            horaCerrado: new Date(),
-            usuarioCerro: 'SISTEMA_MANUAL'
+            horaAbierto: null,      // Resetear hora de apertura
+            horaCerrado: null,      // Resetear hora de cierre
+            usuarioAbrio: null,     // Resetear usuario que abrió
+            usuarioCerro: null      // Resetear usuario que cerró
           }
         });
 
