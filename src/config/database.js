@@ -32,8 +32,9 @@ class Database {
 
   query(sql, params = []) {
     return new Promise((resolve, reject) => {
-      this.connection.query(sql, params, (error, results) => {
+      this.connection.execute(sql, params, (error, results) => {
         if (error) {
+          console.error("❌ Database query error:", error.message);
           reject(error);
         } else {
           resolve(results);
@@ -46,8 +47,10 @@ class Database {
     return new Promise((resolve, reject) => {
       this.connection.end((err) => {
         if (err) {
+          console.error("❌ Error closing database pool:", err.message);
           reject(err);
         } else {
+          console.log("✅ Database pool closed successfully");
           resolve();
         }
       });
