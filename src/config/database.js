@@ -1,5 +1,5 @@
-const mysql = require('mysql2');
-require('dotenv').config();
+const mysql = require("mysql2");
+require("dotenv").config();
 
 class Database {
   constructor() {
@@ -10,11 +10,9 @@ class Database {
       database: process.env.DB_NAME,
       port: process.env.DB_PORT || 3306,
       connectionLimit: 10,
-      acquireTimeout: 60000,
-      timeout: 60000,
+      queueLimit: 0,
       reconnect: true,
-      idleTimeout: 300000,
-      maxIdle: 10
+      multipleStatements: false,
     });
 
     this.connect();
@@ -26,7 +24,7 @@ class Database {
         console.error("❌ Error al conectar con MySQL: " + err.stack);
         process.exit(1);
       }
-      
+
       console.log("✅ Conectado a MySQL como ID " + connection.threadId);
       connection.release();
     });
@@ -50,7 +48,6 @@ class Database {
         if (err) {
           reject(err);
         } else {
-
           resolve();
         }
       });
