@@ -251,6 +251,83 @@ app.get("/debug-auth", authenticateUser, (req, res) => {
   });
 });
 
+// Endpoint para testing del cierre automático de playas
+app.post("/debug/force-close-playas", async (req, res) => {
+  try {
+    const result = await CronService.forceCloseAllPlayas();
+    res.json({
+      success: true,
+      message: "Cierre forzado ejecutado",
+      data: result,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error al forzar cierre de playas",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// Endpoint para verificar el estado de las playas y el cron
+app.get("/debug/playas-status", async (req, res) => {
+  try {
+    const { PrismaClient } = require("@prisma/client");
+    const prisma = new PrismaClient();
+    
+    const playasAbiertas = await prisma.playa.findMany({
+      where: { estado: 'abierto' },
+      select: {
+        id_playa: true,
+        nombre: true,
+        estado: true,
+        horaAbierto: true,
+        usuarioAbrio: true
+      }
+    });
+
+    const playasCerradas = await prisma.playa.findMany({
+      where: { estado: 'cerrado' },
+      select: {
+        id_playa: true,
+        nombre: true,
+        estado: true,
+        horaCerrado: true,
+        usuarioCerro: true
+      }
+    });
+
+    const now = new Date();
+    const limaTime = now.toLocaleString('es-PE', { timeZone: 'America/Lima' });
+
+    res.json({
+      success: true,
+      timestamp: now.toISOString(),
+      limaTime: limaTime,
+      cronStatus: "Activo - Cierre programado para 00:00 (medianoche)",
+      playas: {
+        abiertas: {
+          count: playasAbiertas.length,
+          list: playasAbiertas
+        },
+        cerradas: {
+          count: playasCerradas.length,
+          list: playasCerradas
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error al obtener estado de playas",
+      error: error.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
 // Root endpoint
 app.get("/", (req, res) => {
   res.json({
